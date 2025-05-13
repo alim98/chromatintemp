@@ -1,0 +1,103 @@
+2025-05-12 09:20:02.037 [info] Creating Indexing Repo client:  https://repo42.cursor.sh
+2025-05-12 09:20:02.037 [info] Creating repo client with backend url: https://repo42.cursor.sh
+2025-05-12 09:20:02.037 [error] Git command failed: git config --get remote.origin.url Command failed: git config --get remote.origin.url
+
+2025-05-12 09:20:02.037 [error] Error getting repo info: Command failed: git config --get remote.origin.url
+
+2025-05-12 09:20:02.037 [error] Error: Command failed: git config --get remote.origin.url
+
+	at genericNodeError (node:internal/errors:984:15)
+	at wrappedFn (node:internal/errors:538:14)
+	at ChildProcess.exithandler (node:child_process:423:12)
+	at ChildProcess.emit (node:events:518:28)
+	at maybeClose (node:internal/child_process:1104:16)
+	at Socket.<anonymous> (node:internal/child_process:456:11)
+	at Socket.emit (node:events:518:28)
+	at Pipe.<anonymous> (node:net:343:12)
+2025-05-12 09:20:02.037 [info] InternalRepoInfo constructor with preferredEmbeddingModel 0
+2025-05-12 09:20:02.310 [error] We currently do not allow indexing the home directory.
+2025-05-12 09:20:02.310 [info] Indexing job successfully done or aborted.
+2025-05-12 09:20:49.214 [info] Search by sha took 5.253458999999566ms for query "env.yml`."
+2025-05-12 09:20:49.214 [info] Search by message took 8.600758000000496ms for query "env.yml`."
+2025-05-12 09:20:49.214 [info] Search by sha took 13.725400999996054ms for query "env.yml`."
+2025-05-12 09:20:49.214 [info] Search by message took 18.260598000000755ms for query "env.yml`."
+2025-05-12 09:20:56.657 [info] Search by sha took 4.545787000010023ms for query "env.yml`."
+2025-05-12 09:20:56.657 [info] Search by message took 8.925518999996711ms for query "env.yml`."
+2025-05-12 09:25:02.310 [info] multiCodebaseIndexingJob dispose
+2025-05-12 09:25:02.310 [info] Aborting indexing job.
+2025-05-12 09:25:02.311 [error] We currently do not allow indexing the home directory.
+2025-05-12 09:25:02.311 [info] Indexing job successfully done or aborted.
+2025-05-12 09:30:02.313 [info] multiCodebaseIndexingJob dispose
+2025-05-12 09:30:02.314 [info] Aborting indexing job.
+2025-05-12 09:30:02.314 [error] We currently do not allow indexing the home directory.
+2025-05-12 09:30:02.314 [info] Indexing job successfully done or aborted.
+2025-05-12 09:35:02.311 [info] multiCodebaseIndexingJob dispose
+2025-05-12 09:35:02.312 [info] Aborting indexing job.
+2025-05-12 09:35:02.312 [error] We currently do not allow indexing the home directory.
+2025-05-12 09:35:02.312 [info] Indexing job successfully done or aborted.
+2025-05-12 09:40:02.312 [info] multiCodebaseIndexingJob dispose
+2025-05-12 09:40:02.312 [info] Aborting indexing job.
+2025-05-12 09:40:02.312 [error] We currently do not allow indexing the home directory.
+2025-05-12 09:40:02.312 [info] Indexing job successfully done or aborted.
+2025-05-12 09:45:02.312 [info] multiCodebaseIndexingJob dispose
+2025-05-12 09:45:02.312 [info] Aborting indexing job.
+2025-05-12 09:45:02.312 [error] We currently do not allow indexing the home directory.
+2025-05-12 09:45:02.312 [info] Indexing job successfully done or aborted.
+2025-05-12 09:47:22.865 [info] Search by message took 11.682584000052884ms for query "an"
+2025-05-12 09:47:22.866 [info] Search by sha took 7.613431999925524ms for query "an"
+2025-05-12 09:47:23.117 [info] Search by message took 8.271806000033394ms for query "Warning:"
+2025-05-12 09:47:23.119 [info] Search by sha took 6.284931000089273ms for query "Warning:"
+2025-05-12 09:47:23.893 [info] Search by message took 7.802951999939978ms for query "conda"
+2025-05-12 09:47:23.902 [info] Search by sha took 12.880752000026405ms for query "conda"
+2025-05-12 09:47:26.062 [info] Search by message took 7.3111619998235255ms for query "t"
+2025-05-12 09:47:26.062 [info] Search by sha took 10.632774000056088ms for query "to"
+2025-05-12 09:47:26.062 [info] Search by message took 14.082971999887377ms for query "to"
+2025-05-12 09:47:26.062 [info] Search by sha took 18.160975000122562ms for query "how"
+2025-05-12 09:47:26.062 [info] Search by message took 22.28239700011909ms for query "how"
+2025-05-12 09:47:26.065 [info] Search by sha took 7.399322000099346ms for query "t"
+2025-05-12 09:47:26.302 [info] Search by message took 7.3628999998327345ms for query "train"
+2025-05-12 09:47:26.304 [info] Search by sha took 5.976728999987245ms for query "train"
+2025-05-12 09:47:26.789 [info] Search by message took 8.586394999874756ms for query "all"
+2025-05-12 09:47:26.791 [info] Search by sha took 6.74368799990043ms for query "all"
+2025-05-12 09:47:27.812 [info] Search by message took 7.958563999971375ms for query "models"
+2025-05-12 09:47:27.815 [info] Search by sha took 7.039519999874756ms for query "models"
+2025-05-12 09:47:28.070 [info] Search by message took 8.537586000049487ms for query "i"
+2025-05-12 09:47:28.071 [info] Search by sha took 5.9228150001727045ms for query "i"
+2025-05-12 09:47:28.326 [info] Search by message took 8.613658000016585ms for query "models"
+2025-05-12 09:47:28.328 [info] Search by sha took 6.481932000024244ms for query "models"
+2025-05-12 09:47:28.932 [info] Search by message took 7.535083000082523ms for query "models,"
+2025-05-12 09:47:28.934 [info] Search by sha took 5.946164000080898ms for query "models,"
+2025-05-12 09:47:29.189 [info] Search by message took 8.183157999999821ms for query "p"
+2025-05-12 09:47:29.191 [info] Search by sha took 6.933429999975488ms for query "p"
+2025-05-12 09:47:30.253 [info] Search by message took 8.132420000154525ms for query "please"
+2025-05-12 09:47:30.256 [info] Search by sha took 6.947810999816284ms for query "please"
+2025-05-12 09:47:30.768 [info] Search by message took 9.774962000083178ms for query "fir"
+2025-05-12 09:47:30.769 [info] Search by sha took 7.0003060000017285ms for query "fir"
+2025-05-12 09:47:31.023 [info] Search by message took 8.232192000141367ms for query "firs"
+2025-05-12 09:47:31.025 [info] Search by sha took 6.908361000008881ms for query "firs"
+2025-05-12 09:47:31.687 [info] Search by message took 8.216169000137597ms for query "first"
+2025-05-12 09:47:31.689 [info] Search by sha took 6.058461999986321ms for query "first"
+2025-05-12 09:47:32.199 [info] Search by message took 7.892467000056058ms for query "real"
+2025-05-12 09:47:32.202 [info] Search by sha took 6.498523999936879ms for query "real"
+2025-05-12 09:47:33.472 [info] Search by message took 7.559926999965683ms for query "who"
+2025-05-12 09:47:33.476 [info] Search by sha took 6.756590000120923ms for query "who"
+2025-05-12 09:47:33.728 [info] Search by message took 7.347971000010148ms for query "whole"
+2025-05-12 09:47:33.730 [info] Search by sha took 6.251958000008017ms for query "whole"
+2025-05-12 09:47:34.782 [info] Search by message took 7.847181000048295ms for query "real"
+2025-05-12 09:47:34.785 [info] Search by sha took 6.018527999985963ms for query "real"
+2025-05-12 09:47:46.598 [info] Search by message took 7.028221999993548ms for query "read"
+2025-05-12 09:47:46.600 [info] Search by sha took 5.925245000049472ms for query "read"
+2025-05-12 09:47:46.860 [info] Search by message took 7.284202000126243ms for query "train_morphofeatures_models.py"
+2025-05-12 09:47:46.863 [info] Search by sha took 7.0687599999364465ms for query "train_morphofeatures_models.py"
+2025-05-12 09:47:48.128 [info] Search by message took 8.400342999957502ms for query "and"
+2025-05-12 09:47:48.130 [info] Search by sha took 6.386949999956414ms for query "and"
+2025-05-12 09:47:48.948 [info] Search by message took 7.882930000079796ms for query "then"
+2025-05-12 09:47:48.951 [info] Search by sha took 6.0356209999881685ms for query "then"
+2025-05-12 09:47:51.111 [info] Search by message took 7.517575999954715ms for query "r"
+2025-05-12 09:47:51.114 [info] Search by sha took 6.062577000120655ms for query "r"
+2025-05-12 09:47:51.881 [info] Search by message took 8.372735999990255ms for query "then"
+2025-05-12 09:47:51.885 [info] Search by sha took 8.208610999863595ms for query "then"
+2025-05-12 09:47:52.670 [info] Search by message took 8.489632999990135ms for query "run"
+2025-05-12 09:47:52.672 [info] Search by sha took 6.738541000057012ms for query "run"
+2025-05-12 09:47:53.509 [info] Search by message took 8.250838999869302ms for query "run"
+2025-05-12 09:47:53.511 [info] Search by sha took 6.398648000089452ms for query "run"

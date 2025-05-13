@@ -1,0 +1,226 @@
+2025-05-12 11:00:30.893 [info] Creating Indexing Repo client:  https://repo42.cursor.sh
+2025-05-12 11:00:30.893 [info] Creating repo client with backend url: https://repo42.cursor.sh
+2025-05-12 11:00:30.893 [error] Git command failed: git config --get remote.origin.url Command failed: git config --get remote.origin.url
+
+2025-05-12 11:00:30.893 [error] Error getting repo info: Command failed: git config --get remote.origin.url
+
+2025-05-12 11:00:30.893 [error] Error: Command failed: git config --get remote.origin.url
+
+	at genericNodeError (node:internal/errors:984:15)
+	at wrappedFn (node:internal/errors:538:14)
+	at ChildProcess.exithandler (node:child_process:423:12)
+	at ChildProcess.emit (node:events:518:28)
+	at maybeClose (node:internal/child_process:1104:16)
+	at Socket.<anonymous> (node:internal/child_process:456:11)
+	at Socket.emit (node:events:518:28)
+	at Pipe.<anonymous> (node:net:343:12)
+2025-05-12 11:00:30.893 [info] InternalRepoInfo constructor with preferredEmbeddingModel 0
+2025-05-12 11:00:31.032 [error] We currently do not allow indexing the home directory.
+2025-05-12 11:00:31.032 [info] Indexing job successfully done or aborted.
+2025-05-12 11:00:33.692 [info] Creating Indexing Repo client:  https://repo42.cursor.sh
+2025-05-12 11:00:33.692 [info] Creating repo client with backend url: https://repo42.cursor.sh
+2025-05-12 11:00:33.693 [info] multiCodebaseIndexingJob dispose
+2025-05-12 11:00:33.693 [info] Aborting indexing job.
+2025-05-12 11:00:33.693 [info] InternalRepoInfo constructor with preferredEmbeddingModel 0
+2025-05-12 11:00:34.141 [error] We currently do not allow indexing the home directory.
+2025-05-12 11:00:34.141 [info] Indexing job successfully done or aborted.
+2025-05-12 11:05:34.142 [info] multiCodebaseIndexingJob dispose
+2025-05-12 11:05:34.142 [info] Aborting indexing job.
+2025-05-12 11:05:34.142 [error] We currently do not allow indexing the home directory.
+2025-05-12 11:05:34.142 [info] Indexing job successfully done or aborted.
+2025-05-12 11:10:34.142 [info] multiCodebaseIndexingJob dispose
+2025-05-12 11:10:34.142 [info] Aborting indexing job.
+2025-05-12 11:10:34.142 [error] We currently do not allow indexing the home directory.
+2025-05-12 11:10:34.142 [info] Indexing job successfully done or aborted.
+2025-05-12 11:15:34.143 [info] multiCodebaseIndexingJob dispose
+2025-05-12 11:15:34.143 [info] Aborting indexing job.
+2025-05-12 11:15:34.143 [error] We currently do not allow indexing the home directory.
+2025-05-12 11:15:34.143 [info] Indexing job successfully done or aborted.
+2025-05-12 11:20:34.143 [info] multiCodebaseIndexingJob dispose
+2025-05-12 11:20:34.144 [info] Aborting indexing job.
+2025-05-12 11:20:34.145 [error] We currently do not allow indexing the home directory.
+2025-05-12 11:20:34.145 [info] Indexing job successfully done or aborted.
+2025-05-12 11:25:34.143 [info] multiCodebaseIndexingJob dispose
+2025-05-12 11:25:34.143 [info] Aborting indexing job.
+2025-05-12 11:25:34.143 [error] We currently do not allow indexing the home directory.
+2025-05-12 11:25:34.143 [info] Indexing job successfully done or aborted.
+2025-05-12 11:27:44.984 [info] Search by message took 10.844032000051811ms for query "updata"
+2025-05-12 11:27:44.986 [info] Search by sha took 7.769789000041783ms for query "updata"
+2025-05-12 11:27:46.685 [info] Search by message took 11.413826000178233ms for query "my"
+2025-05-12 11:27:46.685 [info] Search by sha took 16.581130999838933ms for query "m"
+2025-05-12 11:27:46.685 [info] Search by message took 20.53313299990259ms for query "m"
+2025-05-12 11:27:46.685 [info] Search by sha took 32.23152799997479ms for query "update"
+2025-05-12 11:27:46.685 [info] Search by message took 36.82473300001584ms for query "update"
+2025-05-12 11:27:46.686 [info] Search by sha took 8.597433000104502ms for query "my"
+2025-05-12 11:27:46.703 [info] Search by message took 8.41991199995391ms for query "env"
+2025-05-12 11:27:46.706 [info] Search by sha took 7.882880999939516ms for query "env"
+2025-05-12 11:27:48.427 [info] Search by message took 11.039335999870673ms for query "https://download.pytorch.org/whl/cu118"
+2025-05-12 11:27:48.430 [info] Search by sha took 9.355226999847218ms for query "https://download.pytorch.org/whl/cu118"
+2025-05-12 11:29:18.251 [info] Search by message took 13.996143999975175ms for query "https://download.pytorch.org/whl/cu118"
+2025-05-12 11:29:18.256 [info] Search by sha took 12.737529000034556ms for query "https://download.pytorch.org/whl/cu118"
+2025-05-12 11:29:22.670 [info] Search by sha took 14.110933999996632ms for query "env"
+2025-05-12 11:29:22.677 [info] Search by message took 26.820486000040546ms for query "env"
+2025-05-12 11:29:24.131 [info] Search by sha took 20.065277999965474ms for query "env."
+2025-05-12 11:29:24.132 [info] Search by message took 25.47872000001371ms for query "env."
+2025-05-12 11:29:25.484 [info] Search by sha took 32.99443199997768ms for query "env.uml"
+2025-05-12 11:29:25.485 [info] Search by message took 70.44225500011817ms for query "env.uml"
+2025-05-12 11:29:25.485 [info] Search by sha took 75.14404599997215ms for query "env.um"
+2025-05-12 11:29:25.485 [info] Search by message took 78.8555659998674ms for query "env.um"
+2025-05-12 11:29:25.485 [info] Search by sha took 88.31586100021377ms for query "env.u"
+2025-05-12 11:29:25.485 [info] Search by message took 93.96750199981034ms for query "env.u"
+2025-05-12 11:29:25.705 [info] Search by message took 21.54721300001256ms for query "env."
+2025-05-12 11:29:25.705 [info] Search by sha took 14.501026999903843ms for query "env."
+2025-05-12 11:29:28.431 [info] Search by sha took 1108.1704659999814ms for query "env.yml"
+2025-05-12 11:29:28.432 [info] Search by message took 1114.3756470000371ms for query "env.yml"
+2025-05-12 11:29:28.432 [info] Search by sha took 1123.1761020000558ms for query "env.ym"
+2025-05-12 11:29:28.432 [info] Search by message took 1133.1907810000703ms for query "env.ym"
+2025-05-12 11:29:28.432 [info] Search by sha took 1139.5480929999612ms for query "env.y"
+2025-05-12 11:29:28.432 [info] Search by message took 1148.1321060000919ms for query "env.y"
+2025-05-12 11:29:28.489 [info] Search by sha took 49.84317599982023ms for query "https://download.pytorch.org/whl/cu118"
+2025-05-12 11:29:28.489 [info] Search by message took 56.47246400010772ms for query "https://download.pytorch.org/whl/cu118"
+2025-05-12 11:30:24.967 [info] Search by message took 9.692686999915168ms for query "https://download.pytorch.org/whl/cu11"
+2025-05-12 11:30:24.970 [info] Search by sha took 7.526755999773741ms for query "https://download.pytorch.org/whl/cu11"
+2025-05-12 11:30:26.724 [info] Search by sha took 574.4059540000744ms for query "⚡"
+2025-05-12 11:30:26.724 [info] Search by message took 579.4997250000015ms for query "⚡"
+2025-05-12 11:30:30.025 [info] Search by message took 9.247510000132024ms for query "⚡"
+2025-05-12 11:30:30.028 [info] Search by sha took 7.864790000021458ms for query "⚡"
+2025-05-12 11:30:31.344 [info] Search by message took 10.545875000068918ms for query "~"
+2025-05-12 11:30:31.348 [info] Search by sha took 8.924425000092015ms for query "~"
+2025-05-12 11:30:32.249 [info] Search by message took 9.713963000103831ms for query "~"
+2025-05-12 11:30:32.251 [info] Search by sha took 8.182290999917313ms for query "~"
+2025-05-12 11:30:34.143 [info] multiCodebaseIndexingJob dispose
+2025-05-12 11:30:34.143 [info] Aborting indexing job.
+2025-05-12 11:30:34.143 [error] We currently do not allow indexing the home directory.
+2025-05-12 11:30:34.143 [info] Indexing job successfully done or aborted.
+2025-05-12 11:35:34.143 [info] multiCodebaseIndexingJob dispose
+2025-05-12 11:35:34.143 [info] Aborting indexing job.
+2025-05-12 11:35:34.143 [error] We currently do not allow indexing the home directory.
+2025-05-12 11:35:34.143 [info] Indexing job successfully done or aborted.
+2025-05-12 11:36:49.288 [info] Search by message took 9.930581000167876ms for query "./run_training.sh"
+2025-05-12 11:36:49.290 [info] Search by sha took 7.693956000264734ms for query "./run_training.sh"
+2025-05-12 11:36:50.421 [info] Search by message took 8.636643999721855ms for query "./run_training."
+2025-05-12 11:36:50.424 [info] Search by sha took 7.232330999802798ms for query "./run_training."
+2025-05-12 11:39:35.074 [info] Search by message took 9.454721999820322ms for query "nuclei_sample_1a_v1"
+2025-05-12 11:39:35.078 [info] Search by sha took 9.681921999901533ms for query "nuclei_sample_1a_v1"
+2025-05-12 11:39:43.879 [info] Search by message took 11.867092000320554ms for query "and"
+2025-05-12 11:39:43.879 [info] Search by sha took 16.006914999801666ms for query "raw"
+2025-05-12 11:39:43.879 [info] Search by message took 19.88863300019875ms for query "raw"
+2025-05-12 11:39:43.880 [info] Search by sha took 23.971103999763727ms for query "ra"
+2025-05-12 11:39:43.880 [info] Search by message took 27.764870999846607ms for query "ra"
+2025-05-12 11:39:43.880 [info] Search by sha took 31.696824999991804ms for query "for"
+2025-05-12 11:39:43.880 [info] Search by message took 35.29037299985066ms for query "for"
+2025-05-12 11:39:43.880 [info] Search by sha took 40.95505400002003ms for query "folder"
+2025-05-12 11:39:43.880 [info] Search by message took 46.221662000287324ms for query "folder"
+2025-05-12 11:39:43.880 [info] Search by sha took 2432.0937540000305ms for query "nuclei_sample_1a_v1"
+2025-05-12 11:39:43.880 [info] Search by message took 2436.8535859999247ms for query "nuclei_sample_1a_v1"
+2025-05-12 11:39:43.880 [info] Search by sha took 4948.927209999878ms for query "nuclei_sample_1a_v1"
+2025-05-12 11:39:43.880 [info] Search by message took 4952.512646000367ms for query "nuclei_sample_1a_v1"
+2025-05-12 11:39:43.880 [info] Search by sha took 4958.127134999726ms for query "donuclei_sample_1a_v1"
+2025-05-12 11:39:43.880 [info] Search by message took 4963.639510999899ms for query "donuclei_sample_1a_v1"
+2025-05-12 11:39:43.881 [info] Search by sha took 9.363458999898285ms for query "and"
+2025-05-12 11:39:44.256 [info] Search by message took 8.885238000191748ms for query "mask"
+2025-05-12 11:39:44.259 [info] Search by sha took 7.742777000181377ms for query "mask"
+2025-05-12 11:39:46.682 [info] Search by message took 10.643544999882579ms for query "nuclei_sample_1a_v1"
+2025-05-12 11:39:46.684 [info] Search by sha took 7.865085999947041ms for query "nuclei_sample_1a_v1"
+2025-05-12 11:39:46.885 [info] Search by message took 9.883495999965817ms for query "csv"
+2025-05-12 11:39:46.888 [info] Search by sha took 8.109114999882877ms for query "csv"
+2025-05-12 11:39:47.468 [info] Search by message took 9.373292999807745ms for query ":"
+2025-05-12 11:39:47.471 [info] Search by sha took 7.610587999690324ms for query ":"
+2025-05-12 11:39:54.001 [info] Search by message took 8.719254999887198ms for query "chromatin_classes_and_samples.csv"
+2025-05-12 11:39:54.004 [info] Search by sha took 7.320855000056326ms for query "chromatin_classes_and_samples.csv"
+2025-05-12 11:40:34.142 [info] multiCodebaseIndexingJob dispose
+2025-05-12 11:40:34.143 [info] Aborting indexing job.
+2025-05-12 11:40:34.143 [error] We currently do not allow indexing the home directory.
+2025-05-12 11:40:34.143 [info] Indexing job successfully done or aborted.
+2025-05-12 11:42:23.180 [info] Search by message took 11.115522000007331ms for query "p"
+2025-05-12 11:42:23.182 [info] Search by sha took 8.435368000064045ms for query "p"
+2025-05-12 11:42:23.796 [info] Search by message took 10.215086999814957ms for query "plase"
+2025-05-12 11:42:23.798 [info] Search by sha took 8.248560000211ms for query "plase"
+2025-05-12 11:42:25.217 [info] Search by message took 11.578484000172466ms for query "continue"
+2025-05-12 11:42:25.220 [info] Search by sha took 8.663362999912351ms for query "continue"
+2025-05-12 11:45:34.143 [info] multiCodebaseIndexingJob dispose
+2025-05-12 11:45:34.143 [info] Aborting indexing job.
+2025-05-12 11:45:34.143 [error] We currently do not allow indexing the home directory.
+2025-05-12 11:45:34.143 [info] Indexing job successfully done or aborted.
+2025-05-12 11:50:34.143 [info] multiCodebaseIndexingJob dispose
+2025-05-12 11:50:34.144 [info] Aborting indexing job.
+2025-05-12 11:50:34.144 [error] We currently do not allow indexing the home directory.
+2025-05-12 11:50:34.144 [info] Indexing job successfully done or aborted.
+2025-05-12 11:55:34.143 [info] multiCodebaseIndexingJob dispose
+2025-05-12 11:55:34.143 [info] Aborting indexing job.
+2025-05-12 11:55:34.143 [error] We currently do not allow indexing the home directory.
+2025-05-12 11:55:34.143 [info] Indexing job successfully done or aborted.
+2025-05-12 12:00:34.143 [info] multiCodebaseIndexingJob dispose
+2025-05-12 12:00:34.143 [info] Aborting indexing job.
+2025-05-12 12:00:34.144 [error] We currently do not allow indexing the home directory.
+2025-05-12 12:00:34.144 [info] Indexing job successfully done or aborted.
+2025-05-12 12:03:38.606 [info] Search by message took 9.002106999978423ms for query "c"
+2025-05-12 12:03:38.609 [info] Search by sha took 7.870324000250548ms for query "c"
+2025-05-12 12:03:40.276 [info] Search by message took 8.18752699997276ms for query "we"
+2025-05-12 12:03:40.276 [info] Search by sha took 12.000506999902427ms for query "could"
+2025-05-12 12:03:40.276 [info] Search by message took 15.968560999725014ms for query "could"
+2025-05-12 12:03:40.276 [info] Search by sha took 21.347422000020742ms for query "cou"
+2025-05-12 12:03:40.276 [info] Search by message took 27.670677999965847ms for query "cou"
+2025-05-12 12:03:40.279 [info] Search by sha took 7.7437840001657605ms for query "we"
+2025-05-12 12:03:40.569 [info] Search by message took 9.425067000091076ms for query "d"
+2025-05-12 12:03:40.572 [info] Search by sha took 7.387455999851227ms for query "d"
+2025-05-12 12:03:41.166 [info] Search by message took 8.988938000053167ms for query "dont"
+2025-05-12 12:03:41.170 [info] Search by sha took 7.599175000097603ms for query "dont"
+2025-05-12 12:03:41.615 [info] Search by message took 9.343905999790877ms for query "use"
+2025-05-12 12:03:41.617 [info] Search by sha took 7.390878999605775ms for query "use"
+2025-05-12 12:03:42.394 [info] Search by message took 10.256738000083715ms for query "inf"
+2025-05-12 12:03:42.397 [info] Search by sha took 8.578679000027478ms for query "inf"
+2025-05-12 12:03:43.260 [info] Search by message took 11.033868999686092ms for query "inferno"
+2025-05-12 12:03:43.263 [info] Search by sha took 8.23352100001648ms for query "inferno"
+2025-05-12 12:03:43.791 [info] Search by message took 10.606675999704748ms for query "or"
+2025-05-12 12:03:43.794 [info] Search by sha took 7.885703000240028ms for query "or"
+2025-05-12 12:03:44.560 [info] Search by message took 9.362296999897808ms for query "neuro"
+2025-05-12 12:03:44.563 [info] Search by sha took 8.135629999917ms for query "neuro"
+2025-05-12 12:03:44.994 [info] Search by message took 9.142853000201285ms for query "neur"
+2025-05-12 12:03:44.997 [info] Search by sha took 7.560318999923766ms for query "neur"
+2025-05-12 12:03:46.377 [info] Search by message took 12.593341000378132ms for query "neurofi"
+2025-05-12 12:03:46.380 [info] Search by sha took 10.78772300016135ms for query "neurofi"
+2025-05-12 12:03:46.557 [info] Search by message took 9.281785000115633ms for query "neurofier"
+2025-05-12 12:03:46.560 [info] Search by sha took 7.576371000148356ms for query "neurofier"
+2025-05-12 12:03:47.233 [info] Search by message took 12.421006999909878ms for query "neurofire"
+2025-05-12 12:03:47.237 [info] Search by sha took 10.243398999795318ms for query "neurofire"
+2025-05-12 12:05:34.143 [info] multiCodebaseIndexingJob dispose
+2025-05-12 12:05:34.143 [info] Aborting indexing job.
+2025-05-12 12:05:34.143 [error] We currently do not allow indexing the home directory.
+2025-05-12 12:05:34.143 [info] Indexing job successfully done or aborted.
+2025-05-12 12:10:17.776 [info] Search by message took 10.071150000207126ms for query "inferno,"
+2025-05-12 12:10:17.779 [info] Search by sha took 8.008576000109315ms for query "inferno,"
+2025-05-12 12:10:20.833 [info] Search by message took 25.960618000477552ms for query "re"
+2025-05-12 12:10:20.834 [info] Search by sha took 19.817365000024438ms for query "re"
+2025-05-12 12:10:20.971 [info] Search by message took 14.56770099978894ms for query "rep"
+2025-05-12 12:10:20.975 [info] Search by sha took 11.78717799950391ms for query "rep"
+2025-05-12 12:10:21.237 [info] Search by message took 15.350194000639021ms for query "repla"
+2025-05-12 12:10:21.240 [info] Search by sha took 11.344268999993801ms for query "repla"
+2025-05-12 12:10:21.815 [info] Search by message took 12.342431000433862ms for query "replace"
+2025-05-12 12:10:21.819 [info] Search by sha took 9.876292999833822ms for query "replace"
+2025-05-12 12:10:22.242 [info] Search by message took 17.97523900028318ms for query "them"
+2025-05-12 12:10:22.242 [info] Search by sha took 12.10923200007528ms for query "them"
+2025-05-12 12:10:22.990 [info] Search by message took 12.055352000519633ms for query "with"
+2025-05-12 12:10:22.993 [info] Search by sha took 9.13486499991268ms for query "with"
+2025-05-12 12:10:23.205 [info] Search by message took 11.950949999503791ms for query "ds"
+2025-05-12 12:10:23.210 [info] Search by sha took 9.882303000427783ms for query "ds"
+2025-05-12 12:10:23.845 [info] Search by message took 14.053356000222266ms for query "s"
+2025-05-12 12:10:23.849 [info] Search by sha took 12.02431400027126ms for query "s"
+2025-05-12 12:10:24.045 [info] Search by message took 13.582218000665307ms for query "st"
+2025-05-12 12:10:24.049 [info] Search by sha took 10.351382000371814ms for query "st"
+2025-05-12 12:10:27.963 [info] Search by sha took 34.28071799967438ms for query "texture"
+2025-05-12 12:10:27.963 [info] Search by message took 39.37807200010866ms for query "texture"
+2025-05-12 12:10:27.963 [info] Search by sha took 45.09919700026512ms for query "tex"
+2025-05-12 12:10:27.963 [info] Search by message took 49.80429199989885ms for query "tex"
+2025-05-12 12:10:27.963 [info] Search by sha took 55.54500799998641ms for query "te"
+2025-05-12 12:10:27.963 [info] Search by message took 65.84170399978757ms for query "te"
+2025-05-12 12:10:27.963 [info] Search by sha took 1202.649617999792ms for query "in"
+2025-05-12 12:10:27.963 [info] Search by message took 1209.0217959992588ms for query "in"
+2025-05-12 12:10:27.964 [info] Search by sha took 1215.8160500004888ms for query "elsae"
+2025-05-12 12:10:27.964 [info] Search by message took 1222.7593220006675ms for query "elsae"
+2025-05-12 12:10:28.154 [info] Search by message took 19.337038000114262ms for query "model"
+2025-05-12 12:10:28.154 [info] Search by sha took 12.705775000154972ms for query "model"
+2025-05-12 12:10:34.143 [info] multiCodebaseIndexingJob dispose
+2025-05-12 12:10:34.143 [info] Aborting indexing job.
+2025-05-12 12:10:34.143 [error] We currently do not allow indexing the home directory.
+2025-05-12 12:10:34.143 [info] Indexing job successfully done or aborted.

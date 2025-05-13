@@ -1,0 +1,136 @@
+2025-05-12 18:01:56.896 [info] 
+
+
+
+
+2025-05-12 18:01:56.910 [info] Extension host agent started.
+2025-05-12 18:01:58.455 [info] [<unknown>][a8ba30ee][ExtensionHostConnection] New connection established.
+2025-05-12 18:01:58.637 [info] [<unknown>][a8ba30ee][ExtensionHostConnection] <25629> Launched Extension Host Process.
+2025-05-12 18:01:58.810 [info] [<unknown>][8086c104][ManagementConnection] New connection established.
+2025-05-12 18:02:05.020 [error] CodeExpectedError: Could not find pty 1 on pty host
+    at O.W (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:48:12235)
+    at O.resize (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:48:8775)
+    at N.s.<computed> (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:48:2962)
+    at Object.call (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:31:4203)
+    at Kc.s (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:79330)
+    at Kc.q (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:78853)
+    at us.value (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:78255)
+    at _.B (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:746)
+    at _.fire (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:964)
+    at process.w (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:24:29139)
+    at process.emit (node:events:518:28)
+    at emit (node:internal/child_process:950:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:83:21)
+2025-05-12 18:02:05.102 [error] CodeExpectedError: Could not find pty 2 on pty host
+    at O.W (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:48:12235)
+    at O.resize (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:48:8775)
+    at N.s.<computed> (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:48:2962)
+    at Object.call (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:31:4203)
+    at Kc.s (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:79330)
+    at Kc.q (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:78853)
+    at us.value (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:78255)
+    at _.B (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:746)
+    at _.fire (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:964)
+    at process.w (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:24:29139)
+    at process.emit (node:events:518:28)
+    at emit (node:internal/child_process:950:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:83:21)
+2025-05-12 18:02:05.104 [error] CodeExpectedError: Could not find pty 3 on pty host
+    at O.W (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:48:12235)
+    at O.resize (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:48:8775)
+    at N.s.<computed> (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:48:2962)
+    at Object.call (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:31:4203)
+    at Kc.s (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:79330)
+    at Kc.q (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:78853)
+    at us.value (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:78255)
+    at _.B (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:746)
+    at _.fire (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:964)
+    at process.w (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:24:29139)
+    at process.emit (node:events:518:28)
+    at emit (node:internal/child_process:950:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:83:21)
+2025-05-12 18:02:05.106 [error] CodeExpectedError: Could not find pty 4 on pty host
+    at O.W (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:48:12235)
+    at O.resize (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:48:8775)
+    at N.s.<computed> (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:48:2962)
+    at Object.call (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:31:4203)
+    at Kc.s (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:79330)
+    at Kc.q (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:78853)
+    at us.value (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:78255)
+    at _.B (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:746)
+    at _.fire (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:964)
+    at process.w (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:24:29139)
+    at process.emit (node:events:518:28)
+    at emit (node:internal/child_process:950:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:83:21)
+2025-05-12 18:06:56.911 [info] New EH opened, aborting shutdown
+2025-05-12 18:26:13.173 [info] [<unknown>][595f265b][ManagementConnection] New connection established.
+2025-05-12 18:26:13.185 [info] [<unknown>][fe965f10][ExtensionHostConnection] New connection established.
+2025-05-12 18:26:13.195 [info] [<unknown>][fe965f10][ExtensionHostConnection] <73208> Launched Extension Host Process.
+2025-05-12 18:26:20.306 [error] CodeExpectedError: Could not find pty 9 on pty host
+    at O.W (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:48:12235)
+    at O.resize (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:48:8775)
+    at N.s.<computed> (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:48:2962)
+    at Object.call (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:31:4203)
+    at Kc.s (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:79330)
+    at Kc.q (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:78853)
+    at us.value (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:78255)
+    at _.B (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:746)
+    at _.fire (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:964)
+    at process.w (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:24:29139)
+    at process.emit (node:events:518:28)
+    at emit (node:internal/child_process:950:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:83:21)
+2025-05-12 18:26:20.309 [error] CodeExpectedError: Could not find pty 10 on pty host
+    at O.W (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:48:12235)
+    at O.resize (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:48:8775)
+    at N.s.<computed> (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:48:2962)
+    at Object.call (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:31:4203)
+    at Kc.s (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:79330)
+    at Kc.q (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:78853)
+    at us.value (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:78255)
+    at _.B (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:746)
+    at _.fire (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:964)
+    at process.w (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:24:29139)
+    at process.emit (node:events:518:28)
+    at emit (node:internal/child_process:950:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:83:21)
+2025-05-12 18:26:20.310 [error] CodeExpectedError: Could not find pty 11 on pty host
+    at O.W (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:48:12235)
+    at O.resize (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:48:8775)
+    at N.s.<computed> (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:48:2962)
+    at Object.call (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:31:4203)
+    at Kc.s (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:79330)
+    at Kc.q (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:78853)
+    at us.value (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:78255)
+    at _.B (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:746)
+    at _.fire (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:964)
+    at process.w (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:24:29139)
+    at process.emit (node:events:518:28)
+    at emit (node:internal/child_process:950:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:83:21)
+2025-05-12 18:26:20.311 [error] CodeExpectedError: Could not find pty 12 on pty host
+    at O.W (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:48:12235)
+    at O.resize (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:48:8775)
+    at N.s.<computed> (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:48:2962)
+    at Object.call (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:31:4203)
+    at Kc.s (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:79330)
+    at Kc.q (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:78853)
+    at us.value (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:78255)
+    at _.B (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:746)
+    at _.fire (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:29:964)
+    at process.w (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/vs/platform/terminal/node/ptyHostMain.js:24:29139)
+    at process.emit (node:events:518:28)
+    at emit (node:internal/child_process:950:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:83:21)
+2025-05-12 18:40:17.672 [info] [<unknown>][8086c104][ManagementConnection] The client has disconnected, will wait for reconnection 3h before disposing...
+2025-05-12 19:24:31.544 [info] [<unknown>][595f265b][ManagementConnection] The client has disconnected, will wait for reconnection 3h before disposing...
+2025-05-12 19:24:31.576 [error] Error: Unexpected SIGPIPE
+    at process.<anonymous> (file:///teamspace/studios/this_studio/.cursor-server/cli/servers/Stable-82ef0f61c01d079d1b7e5ab04d88499d5af500e0/server/out/server-main.js:176:1060)
+    at process.emit (node:events:530:35)
+2025-05-12 21:39:55.778 [info] [<unknown>][a8ba30ee][ExtensionHostConnection] <25629> Extension Host Process exited with code: 0, signal: null.
+2025-05-12 21:40:20.064 [info] [<unknown>][8086c104][ManagementConnection] The reconnection grace time of 3h has expired, so the connection will be disposed.
+2025-05-12 22:24:03.139 [info] [<unknown>][fe965f10][ExtensionHostConnection] <73208> Extension Host Process exited with code: 0, signal: null.
+2025-05-12 22:24:03.142 [info] Last EH closed, waiting before shutting down
+2025-05-12 22:24:33.629 [info] [<unknown>][595f265b][ManagementConnection] The reconnection grace time of 3h has expired, so the connection will be disposed.
+2025-05-12 22:29:03.143 [info] Last EH closed, shutting down

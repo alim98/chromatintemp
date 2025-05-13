@@ -1,0 +1,16 @@
+2025-05-12 10:37:25.717 [info] Extension host with pid 3538 started
+2025-05-12 10:37:25.717 [error] Error: EEXIST: file already exists, open '/teamspace/studios/this_studio/.cursor-server/data/User/workspaceStorage/7689a0129e7c1027df28afe340ebd432/vscode.lock'
+2025-05-12 10:37:25.717 [info] Lock '/teamspace/studios/this_studio/.cursor-server/data/User/workspaceStorage/7689a0129e7c1027df28afe340ebd432/vscode.lock': Could not acquire lock, checking if the file is stale.
+2025-05-12 10:37:25.729 [info] Lock '/teamspace/studios/this_studio/.cursor-server/data/User/workspaceStorage/7689a0129e7c1027df28afe340ebd432/vscode.lock': The pid 21060 appears to be gone.
+2025-05-12 10:37:25.729 [info] Lock '/teamspace/studios/this_studio/.cursor-server/data/User/workspaceStorage/7689a0129e7c1027df28afe340ebd432/vscode.lock': Deleting a stale lock.
+2025-05-12 10:37:25.760 [info] Lock '/teamspace/studios/this_studio/.cursor-server/data/User/workspaceStorage/7689a0129e7c1027df28afe340ebd432/vscode.lock': Lock acquired.
+2025-05-12 10:37:26.123 [info] ExtensionService#_doActivateExtension vscode.emmet, startup: false, activationEvent: 'onLanguage'
+2025-05-12 10:37:27.128 [info] ExtensionService#_doActivateExtension vscode.git-base, startup: true, activationEvent: '*', root cause: vscode.git
+2025-05-12 10:37:27.843 [info] ExtensionService#_doActivateExtension vscode.git, startup: true, activationEvent: '*'
+2025-05-12 10:37:27.843 [info] ExtensionService#_doActivateExtension vscode.github, startup: true, activationEvent: '*'
+2025-05-12 10:37:28.710 [info] Eager extensions activated
+2025-05-12 10:37:28.711 [info] ExtensionService#_doActivateExtension anysphere.cursor-retrieval, startup: false, activationEvent: 'onStartupFinished'
+2025-05-12 10:37:28.711 [info] ExtensionService#_doActivateExtension anysphere.cursor-shadow-workspace, startup: false, activationEvent: 'onStartupFinished'
+2025-05-12 10:37:28.712 [info] ExtensionService#_doActivateExtension anysphere.cursor-tokenize, startup: false, activationEvent: 'onStartupFinished'
+2025-05-12 10:37:28.712 [info] ExtensionService#_doActivateExtension vscode.debug-auto-launch, startup: false, activationEvent: 'onStartupFinished'
+2025-05-12 10:37:28.715 [info] ExtensionService#_doActivateExtension vscode.merge-conflict, startup: false, activationEvent: 'onStartupFinished'

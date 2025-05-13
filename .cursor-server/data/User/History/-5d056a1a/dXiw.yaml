@@ -1,0 +1,57 @@
+# Configuration for training the high-resolution texture model
+project_directory: "experiments/highres_texture_model"
+device: "cpu"  # Use "cuda" if CUDA is available
+
+# Training configuration
+model_name: "UNet3D"  # Model type from neurofire.models
+model_kwargs:
+  in_channels: 1
+  out_channels: 1
+  final_activation: "Sigmoid"
+  depth: 4
+  initial_features: 32
+
+# Loss configuration
+loss: "MSELoss"
+loss_kwargs: {}
+
+# Optimizer configuration
+training_optimizer_kwargs:
+  optimizer: "Adam"
+  optimizer_kwargs:
+    lr: 0.0001
+    weight_decay: 0.0001
+
+# General training settings
+num_epochs: 5
+backprop_every: 1
+smoothness: 0.95
+opt_level: "O1"
+mixed_precision: "False"
+
+# Data configuration
+data_config:
+  root_dir: "nuclei_sample_1a_v1"
+  class_csv_path: "chromatin_classes_and_samples.csv"
+  split: 0.2  # 20% of data for validation
+  seed: 42
+  raw_level: 1  # Higher resolution level for raw data
+
+# Loader configurations
+loader_config:
+  batch_size: 4  # Smaller batch size due to higher resolution
+  shuffle: true
+  num_workers: 0
+  pin_memory: true
+
+val_loader_config:
+  batch_size: 4
+  shuffle: false
+  num_workers: 0
+  pin_memory: true
+
+pred_loader_config:
+  batch_size: 1
+  shuffle: false
+  num_workers: 0
+  pin_memory: false 
