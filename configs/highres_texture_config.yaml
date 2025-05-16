@@ -22,7 +22,7 @@ training_optimizer_kwargs:
     weight_decay: 0.00001
 
 # General training settings
-num_epochs: 50
+num_epochs: 1
 backprop_every: 1
 smoothness: 0.95
 opt_level: "O1"

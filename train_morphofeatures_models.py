@@ -114,8 +114,18 @@ class CustomShapeTrainer(ShapeTrainer):
             else:
                 out, h = self.model(points)
             
-            # Create labels for contrastive learning (pairs)
-            labels = torch.arange(out.size(0) // 2).repeat_interleave(2).to(self.device)
+            # Create labels for contrastive learning
+            # Make sure we have enough labels for the embeddings
+            embedding_count = out.size(0)
+            if embedding_count % 2 == 0:
+                # If even number of embeddings, create pairs
+                labels = torch.arange(embedding_count // 2).repeat_interleave(2).to(self.device)
+            else:
+                # If odd number of embeddings, adjust to make sure labels match embeddings
+                # Here we'll treat each embedding as its own class for simplicity
+                labels = torch.arange(embedding_count).to(self.device)
+                
+            logger.debug(f"Embeddings shape: {out.shape}, Labels shape: {labels.shape}")
             
             # Calculate loss
             loss = self.criterion(out, labels)
@@ -176,8 +186,18 @@ class CustomShapeTrainer(ShapeTrainer):
                 else:
                     out, h = self.model(points)
                 
-                # Create labels for contrastive learning (pairs)
-                labels = torch.arange(out.size(0) // 2).repeat_interleave(2).to(self.device)
+                # Create labels for contrastive learning
+                # Make sure we have enough labels for the embeddings
+                embedding_count = out.size(0)
+                if embedding_count % 2 == 0:
+                    # If even number of embeddings, create pairs
+                    labels = torch.arange(embedding_count // 2).repeat_interleave(2).to(self.device)
+                else:
+                    # If odd number of embeddings, adjust to make sure labels match embeddings
+                    # Here we'll treat each embedding as its own class for simplicity
+                    labels = torch.arange(embedding_count).to(self.device)
+                    
+                logger.debug(f"Validation - Embeddings shape: {out.shape}, Labels shape: {labels.shape}")
                 
                 # Calculate loss
                 loss = self.criterion(out, labels)

@@ -12,7 +12,7 @@ data:
 
 # Loader configuration
 loader:
-  batch_size: 8
+  batch_size: 2
   shuffle: true
   num_workers: 0
 
@@ -49,7 +49,7 @@ criterion:
 # Training parameters
 training:
   validate_every: 1
-  epochs: 50
+  epochs: 1
   checkpoint_every: 1
 
 # Scheduler configuration
