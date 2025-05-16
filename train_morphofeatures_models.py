@@ -90,6 +90,149 @@ class CustomShapeTrainer(ShapeTrainer):
             # Use the training data for validation (not ideal but works for small datasets)
             logger.warning("Using training data for validation. For proper evaluation, provide val_root_dir.")
             self.val_loader = self.train_loader
+    
+    def train_epoch(self):
+        """Train the model for one epoch"""
+        self.model.train()
+        total_loss = 0.0
+        
+        for batch_idx, batch in enumerate(tqdm(self.train_loader, desc=f'Training epoch {self.epoch}')):
+            # The batch might be a dictionary or a tuple depending on the dataloader
+            # Let's examine the batch to determine its format
+            if isinstance(batch, dict):
+                # Original format: dictionary with 'points' and 'features'
+                points = batch['points'].to(self.device)
+                features = batch['features'].to(self.device) if 'features' in batch else None
+            else:
+                # Our custom format: tuple of (data, labels)
+                points = batch[0].to(self.device)
+                features = None  # Features are integrated in the points data
+            
+            # Forward pass (match the original implementation's signature)
+            if features is not None:
+                out, h = self.model(points, features)
+            else:
+                out, h = self.model(points)
+            
+            # Create labels for contrastive learning (pairs)
+            labels = torch.arange(out.size(0) // 2).repeat_interleave(2).to(self.device)
+            
+            # Calculate loss
+            loss = self.criterion(out, labels)
+            
+            # Skip iteration if loss is NaN
+            if torch.isnan(loss).item():
+                logger.warning(f'NaN loss encountered: {loss.item()}')
+                continue
+            
+            # Zero the gradients
+            self.optimizer.zero_grad()
+            
+            # Backward pass
+            loss.backward()
+            
+            # Update weights
+            self.optimizer.step()
+            
+            # Accumulate loss
+            total_loss += loss.item()
+            
+            # Log progress
+            if batch_idx % 10 == 0:
+                logger.info(f"Batch {batch_idx}/{len(self.train_loader)}, Loss: {loss.item():.4f}")
+            
+            # Update global step counter
+            self.step += 1
+        
+        # Calculate average loss
+        avg_loss = total_loss / len(self.train_loader)
+        logger.info(f"Epoch {self.epoch} - Average training loss: {avg_loss:.6f}")
+        return avg_loss
+    
+    def validate_epoch(self):
+        """Validate the model"""
+        if self.epoch % self.config['training']['validate_every'] != 0:
+            return
+            
+        self.model.eval()
+        total_loss = 0.0
+        
+        with torch.no_grad():
+            for batch_idx, batch in enumerate(tqdm(self.val_loader, desc='Validation')):
+                # The batch might be a dictionary or a tuple depending on the dataloader
+                # Let's examine the batch to determine its format
+                if isinstance(batch, dict):
+                    # Original format: dictionary with 'points' and 'features'
+                    points = batch['points'].to(self.device)
+                    features = batch['features'].to(self.device) if 'features' in batch else None
+                else:
+                    # Our custom format: tuple of (data, labels)
+                    points = batch[0].to(self.device)
+                    features = None  # Features are integrated in the points data
+                
+                # Forward pass (match the original implementation's signature)
+                if features is not None:
+                    out, h = self.model(points, features)
+                else:
+                    out, h = self.model(points)
+                
+                # Create labels for contrastive learning (pairs)
+                labels = torch.arange(out.size(0) // 2).repeat_interleave(2).to(self.device)
+                
+                # Calculate loss
+                loss = self.criterion(out, labels)
+                
+                # Accumulate loss
+                total_loss += loss.item()
+        
+        # Calculate average loss
+        avg_loss = total_loss / len(self.val_loader)
+        logger.info(f"Epoch {self.epoch} - Validation loss: {avg_loss:.6f}")
+        
+        # Save best model
+        if self.best_val_loss is None or avg_loss < self.best_val_loss:
+            self.best_val_loss = avg_loss
+            self.checkpoint(True)
+            logger.info(f"New best validation loss: {avg_loss:.6f}")
+            
+        return avg_loss
+    
+    def train(self):
+        """Train the model for all epochs"""
+        for epoch_num in tqdm(range(self.config['training']['epochs']), desc='Epochs'):
+            self.epoch = epoch_num
+            self.train_epoch()
+            self.validate_epoch()
+            self.scheduler.step()
+            self.checkpoint(False)
+            
+    def run(self):
+        """Main training function (called by fit)"""
+        # Check if wandb should be used
+        use_wandb = self.config.get('use_wandb', False)
+        self.use_wandb = use_wandb
+        
+        if use_wandb:
+            try:
+                import wandb
+                with wandb.init(project=self.config.get('wandb_project', 'MorphoFeatures')):
+                    self.validate_epoch()
+                    self.train()
+            except (ImportError, AttributeError) as e:
+                logger.warning(f"Unable to use wandb for logging: {e}")
+                logger.warning("Continuing without wandb logging...")
+                self.use_wandb = False
+                self.validate_epoch()
+                self.train()
+        else:
+            logger.info("Wandb logging disabled in config. Using console output only.")
+            self.validate_epoch()
+            self.train()
+            
+    def fit(self):
+        """Wrapper method to match the expected API in train_morphofeatures_models.py"""
+        logger.info("Starting model training via fit()...")
+        self.run()
 
 
 class TextureModelTrainer:
@@ -495,7 +638,7 @@ def train_shape_model(config_path):
         trainer = CustomShapeTrainer(config)
         
         # Train the model
-        trainer.fit()
+        trainer.run()
     except Exception as e:
         logger.error(f"Error in train_shape_model: {str(e)}")
         logger.error(traceback.format_exc())

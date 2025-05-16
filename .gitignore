@@ -20,3 +20,10 @@ results/*
 *.gif
 *.bmp
 *.tiff
+data/*
+*.zip
+*.tar
+*.gz
+*.bz2
+*.rar
+*.7z
