@@ -8,3 +8,4 @@ Listening on 127.0.0.1:50357
 [2025-05-13 07:55:04] info server entrypoint: cursor-server
 [2025-05-13 07:55:04] info Starting server...
 [2025-05-13 07:55:04] info Server started
+[2025-05-13 08:18:08] info Disposed of connection to running server.

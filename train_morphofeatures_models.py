@@ -9,6 +9,7 @@ import time
 import traceback
 from tqdm import tqdm
 import numpy as np
+import pandas as pd
 
 # Configure detailed logging
 logging.basicConfig(format='[+][%(asctime)-15s][%(name)s %(levelname)s] %(message)s',
@@ -190,100 +191,105 @@ class TextureModelTrainer:
         try:
             # Get dataset config
             data_config = self.config.get('data_config', {})
-            # Override root_dir with the absolute path to the data directory
-            root_dir = '/teamspace/studios/this_studio'
-            logger.info(f"Using absolute path for root_dir: {root_dir}")
             
+            # Get parameters from config
+            use_tiff = data_config.get('use_tiff', False)
+            root_dir = data_config.get('root_dir', '/teamspace/studios/this_studio')
             class_csv_path = data_config.get('class_csv_path', None)
-            logger.debug(f"Data config - root_dir: {root_dir}, class_csv_path: {class_csv_path}")
-            
-            # Get specific config for texture data
             is_cytoplasm = data_config.get('is_cytoplasm', False)
             box_size = data_config.get('box_size', (104, 104, 104))
-            split = data_config.get('split', 0.2)
-            seed = data_config.get('seed', 42)
-            logger.debug(f"Data params - is_cytoplasm: {is_cytoplasm}, box_size: {box_size}, split: {split}, seed: {seed}")
+            input_dir = data_config.get('input_dir', 'raw')
+            target_dir = data_config.get('target_dir', 'mask')
             
             # Get loader configs
             train_loader_config = self.config.get('loader_config', {})
             val_loader_config = self.config.get('val_loader_config', {})
-            logger.debug(f"Loader configs - train: {train_loader_config}, val: {val_loader_config}")
             
-            # Check if custom dataloader is available
-            if not hasattr(self, 'has_texture_dataloader') or not self.has_texture_dataloader:
-                logger.error("Custom texture dataloader is not available")
-                raise ImportError("Custom texture dataloader is not available. Install required dependencies.")
+            logger.info(f"Reading CSV: {class_csv_path}")
             
-            # Check if root directory exists
-            if not os.path.exists(root_dir):
-                logger.error(f"Root directory does not exist: {root_dir}")
-                raise FileNotFoundError(f"Root directory not found: {root_dir}")
-            
-            # Check if data directory contains any samples
-            samples_in_dir = [f for f in os.listdir(root_dir) if os.path.isdir(os.path.join(root_dir, f))]
-            logger.info(f"Found {len(samples_in_dir)} sample directories in root_dir")
-            
-            # Check if the nuclei_sample_1a_v1 directory exists
-            sample_dir = os.path.join(root_dir, 'nuclei_sample_1a_v1')
-            if not os.path.exists(sample_dir):
-                logger.error(f"Sample directory does not exist: {sample_dir}")
-                raise FileNotFoundError(f"Sample directory not found: {sample_dir}")
-            
-            # Check if required files exist
-            raw_path = os.path.join(sample_dir, 'raw.npy')
-            label_path = os.path.join(sample_dir, 'texture_label.npy')
-            
-            logger.info(f"Checking for raw.npy: {os.path.exists(raw_path)}")
-            logger.info(f"Checking for texture_label.npy: {os.path.exists(label_path)}")
-            
-            if not os.path.exists(raw_path) or not os.path.exists(label_path):
-                logger.warning(f"Required files missing in {sample_dir}")
-                logger.warning(f"Available files: {os.listdir(sample_dir)}")
-                logger.warning("Will generate dummy data for missing files")
+            # Directly read the CSV file
+            sample_ids = []
+            if class_csv_path and os.path.exists(class_csv_path):
+                # Specify dtype={'sample_id': str} to preserve leading zeros
+                df = pd.read_csv(class_csv_path, dtype={'sample_id': str})
+                logger.info(f"CSV contains {len(df)} samples with columns: {df.columns.tolist()}")
                 
-                # Create the raw.npy and texture_label.npy files for testing
-                if not os.path.exists(raw_path):
-                    logger.info("Creating dummy raw.npy file for testing")
-                    raw_vol = np.random.rand(200, 200, 200).astype(np.float32)
-                    np.save(raw_path, raw_vol)
-                
-                if not os.path.exists(label_path):
-                    logger.info("Creating dummy texture_label.npy file for testing")
-                    label_vol = np.random.rand(200, 200, 200).astype(np.float32) > 0.5
-                    np.save(label_path, label_vol)
+                if 'sample_id' in df.columns:
+                    # Extract sample IDs and convert to strings
+                    csv_samples = [str(id) for id in df['sample_id'].unique()]
+                    logger.info(f"Found {len(csv_samples)} unique sample IDs in CSV: {csv_samples}")
+                    
+                    # Create full paths for sample directories
+                    # Check if root_dir is the nuclei_sample_1a_v1 directory or its parent
+                    if os.path.basename(root_dir) == 'nuclei_sample_1a_v1':
+                        parent_dir = root_dir
+                    else:
+                        parent_dir = os.path.join(root_dir, 'nuclei_sample_1a_v1')
+                    
+                    # Log the parent directory we're using
+                    logger.info(f"Using parent directory for samples: {parent_dir}")
+                    
+                    for sample_id in csv_samples:
+                        sample_path = os.path.join(parent_dir, sample_id)
+                        logger.info(f"Checking sample path: {sample_path}")
+                        if os.path.exists(sample_path) and os.path.isdir(sample_path):
+                            # Verify that this directory contains 'raw' and 'mask' folders
+                            raw_dir = os.path.join(sample_path, input_dir)
+                            mask_dir = os.path.join(sample_path, target_dir)
+                            if os.path.exists(raw_dir) and os.path.exists(mask_dir):
+                                logger.info(f"Found valid sample with raw/mask dirs: {sample_path}")
+                                sample_ids.append(sample_path)
+                            else:
+                                logger.warning(f"Sample directory doesn't have required directories: {sample_path}")
+                                logger.warning(f"  Missing: {input_dir if not os.path.exists(raw_dir) else ''} {target_dir if not os.path.exists(mask_dir) else ''}")
+                        else:
+                            logger.warning(f"Sample directory not found: {sample_path}")
+                else:
+                    logger.error(f"CSV does not contain 'sample_id' column")
+            else:
+                logger.warning(f"CSV file not found: {class_csv_path}")
             
-            # Use the absolute path to the sample directory
-            sample_path = sample_dir
+            if not sample_ids:
+                logger.error("No valid sample directories found from CSV")
+                raise ValueError("No valid sample directories found")
             
-            # Use the full path for both training and validation
-            train_ids = [sample_path]
-            val_ids = [sample_path]
-            logger.info(f"Using sample for both training and validation: {sample_path}")
+            # Split samples for training and validation
+            train_size = int(len(sample_ids) * 0.8)  # 80% for training, 20% for validation
+            train_ids = sample_ids[:train_size]
+            val_ids = sample_ids[train_size:] if train_size < len(sample_ids) else sample_ids
             
-            # Create the dataloaders with full paths to samples
-            logger.info(f"Creating training dataloader with {len(train_ids)} samples")
+            logger.info(f"Using {len(train_ids)} samples for training and {len(val_ids)} for validation")
+            
+            # Create the dataloaders
+            logger.info(f"Creating training dataloader")
             self.train_loader = self.get_morphofeatures_texture_dataloader(
-                root_dir=root_dir,  # This is not used when full paths are provided
-                sample_ids=train_ids,  # Now using full paths
+                root_dir=root_dir,
+                sample_ids=train_ids,
                 batch_size=train_loader_config.get('batch_size', 4),
                 shuffle=train_loader_config.get('shuffle', True),
                 num_workers=train_loader_config.get('num_workers', 0),
                 is_cytoplasm=is_cytoplasm,
-                box_size=box_size
+                box_size=box_size,
+                use_tiff=use_tiff,
+                input_dir=input_dir,
+                target_dir=target_dir
             )
-            logger.info(f"Created training dataloader with {len(self.train_loader.dataset)} samples")
             
-            logger.info(f"Creating validation dataloader with {len(val_ids)} samples")
+            logger.info(f"Creating validation dataloader")
             self.val_loader = self.get_morphofeatures_texture_dataloader(
-                root_dir=root_dir,  # This is not used when full paths are provided
-                sample_ids=val_ids,  # Now using full paths
+                root_dir=root_dir,
+                sample_ids=val_ids,
                 batch_size=val_loader_config.get('batch_size', 4),
                 shuffle=val_loader_config.get('shuffle', False),
                 num_workers=val_loader_config.get('num_workers', 0),
                 is_cytoplasm=is_cytoplasm,
-                box_size=box_size
+                box_size=box_size,
+                use_tiff=use_tiff,
+                input_dir=input_dir,
+                target_dir=target_dir
             )
-            logger.info(f"Created validation dataloader with {len(self.val_loader.dataset)} samples")
+            
+            logger.info(f"Created dataloader with {len(self.train_loader.dataset)} training samples and {len(self.val_loader.dataset)} validation samples")
         except Exception as e:
             logger.error(f"Error in setup_dataloaders: {str(e)}")
             logger.error(traceback.format_exc())
