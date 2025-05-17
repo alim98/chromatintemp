@@ -21,3 +21,5 @@ Extension host agent listening on /tmp/code-5a334ffb-99b1-4827-930e-e0693030b16f
 [11:39:32] ComputeTargetPlatform: linux-x64
 New EH opened, aborting shutdown
 [11:44:24] New EH opened, aborting shutdown
+[12:29:24] [<unknown>][03b49e59][ManagementConnection] The client has reconnected.
+[12:29:24] [<unknown>][f6435ded][ExtensionHostConnection] The client has reconnected.

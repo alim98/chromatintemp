@@ -36,3 +36,5 @@ data/*
 **/__pycache__/
 **/__pycache__/
 low_res_dataset/*
+.vscode-server/*
+.vscode/*

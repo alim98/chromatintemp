@@ -49,3 +49,11 @@
 2025-05-17 11:51:46.719 [info] srequest done: chatRequestId: [a6c44fa0-ba58-491a-948a-ea0523446d58], speculationRequestId: [105c237b-978a-4f75-a0f0-b663c28f37b5]
 2025-05-17 11:51:53.816 [info] message 0 returned. finish reason: [stop]
 2025-05-17 11:51:53.816 [info] request done: requestId: [a6c44fa0-ba58-491a-948a-ea0523446d58] model deployment ID: []
+2025-05-17 12:09:55.618 [info] Logged in as alim98
+2025-05-17 12:09:56.232 [info] Got Copilot token for alim98
+2025-05-17 12:09:58.714 [info] copilot token chat_enabled: true, sku: free_limited_copilot
+2025-05-17 12:09:58.835 [info] BYOK: Copilot Chat known models list fetched successfully.
+2025-05-17 12:36:36.476 [info] Logged in as alim98
+2025-05-17 12:36:37.040 [info] Got Copilot token for alim98
+2025-05-17 12:36:39.666 [info] copilot token chat_enabled: true, sku: free_limited_copilot
+2025-05-17 12:36:39.758 [info] BYOK: Copilot Chat known models list fetched successfully.
