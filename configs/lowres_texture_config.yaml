@@ -1,6 +1,6 @@
 # Configuration for training the low-resolution texture model
 project_directory: experiments/lowres_texture_model
-device: "cuda"
+device: "cpu"
 
 # Training configuration
 model_name: UNet3D

@@ -12,35 +12,22 @@ import numpy as np
 import pandas as pd
 import wandb
 wandb.login(key="9de783cdb1f22a4b8f97f7e05e4e057f668e0cfe")
-# # Configure detailed logging
-# logging.basicConfig(format='[+][%(asctime)-15s][%(name)s %(levelname)s] %(message)s',
-#                    stream=sys.stdout,
-#                    level=logging.DEBUG)  # Change to DEBUG for more verbose output
+
 logger = logging.getLogger(__name__)
 
-try:
-    # Add MorphoFeatures to the path
-    sys.path.append(os.path.abspath("MorphoFeatures"))
-    logger.info("Added MorphoFeatures to the path")
+# Add MorphoFeatures to the path
+sys.path.append(os.path.abspath("MorphoFeatures"))
+logger.info("Added MorphoFeatures to the path")
 
-    # Import MorphoFeatures shape components
-    try:
-        from MorphoFeatures.morphofeatures.shape.train_shape_model import ShapeTrainer
-        logger.info("Successfully imported ShapeTrainer")
-    except ImportError as e:
-        logger.error(f"Failed to import ShapeTrainer: {str(e)}")
-        logger.error(traceback.format_exc())
 
-    # Import custom dataloaders
-    try:
-        from dataloader.morphofeatures_adapter import get_morphofeatures_mesh_dataloader
-        logger.info("Successfully imported mesh dataloader")
-    except ImportError as e:
-        logger.error(f"Failed to import mesh dataloader: {str(e)}")
-        logger.error(traceback.format_exc())
-except Exception as e:
-    logger.error(f"Setup error: {str(e)}")
-    logger.error(traceback.format_exc())
+from MorphoFeatures.morphofeatures.shape.train_shape_model import ShapeTrainer
+logger.info("Successfully imported ShapeTrainer")
+
+
+# Import custom dataloaders
+from dataloader.morphofeatures_adapter import get_morphofeatures_mesh_dataloader
+logger.info("Successfully imported mesh dataloader")
+    
 
 
 class CustomShapeTrainer(ShapeTrainer):
@@ -262,92 +249,80 @@ class TextureModelTrainer:
     """
     def __init__(self, config, model_type='lowres'):
         logger.info(f"Initializing {model_type} TextureModelTrainer")
-        try:
-            # Using PyTorch's native libraries instead of neurofire
-            self.config = config
-            self.model_type = model_type
-            self.device = torch.device(config.get('device', 'cpu'))
-            logger.info(f"Using device: {self.device}")
-            print(self.device)
-            self.project_dir = config.get('project_directory', f'experiments/{model_type}_texture_model')
-            os.makedirs(os.path.join(self.project_dir, 'Weights'), exist_ok=True)
-            os.makedirs(os.path.join(self.project_dir, 'Logs'), exist_ok=True)
-            logger.info(f"Created project directory: {self.project_dir}")
+        # Using PyTorch's native libraries instead of neurofire
+        self.config = config
+        self.model_type = model_type
+        self.device = torch.device(config.get('device', 'cpu'))
+        logger.info(f"Using device: {self.device}")
+        print(self.device)
+        self.project_dir = config.get('project_directory', f'experiments/{model_type}_texture_model')
+        os.makedirs(os.path.join(self.project_dir, 'Weights'), exist_ok=True)
+        os.makedirs(os.path.join(self.project_dir, 'Logs'), exist_ok=True)
+        logger.info(f"Created project directory: {self.project_dir}")
+        
+        # Try to import the custom dataloader adapter
+        from dataloader.lowres_texture_adapter import get_morphofeatures_texture_dataloader
+        self.get_morphofeatures_texture_dataloader = get_morphofeatures_texture_dataloader
+        self.has_texture_dataloader = True
+        logger.info("Successfully imported texture dataloader")
             
-            # Try to import the custom dataloader adapter
-            try:
-                from dataloader.lowres_texture_adapter import get_morphofeatures_texture_dataloader
-                self.get_morphofeatures_texture_dataloader = get_morphofeatures_texture_dataloader
-                self.has_texture_dataloader = True
-                logger.info("Successfully imported texture dataloader")
-            except ImportError as e:
-                logger.error(f"Could not import texture dataloader adapter: {e}")
-                logger.error(traceback.format_exc())
-                self.has_texture_dataloader = False
-                
-            # Setup the texture model
-            self.setup_model()
-            
-            # Setup dataloaders
-            self.setup_dataloaders()
-        except Exception as e:
-            logger.error(f"Error in TextureModelTrainer initialization: {str(e)}")
-            logger.error(traceback.format_exc())
-            raise
+        # Setup the texture model
+        self.setup_model()
+        
+        # Setup dataloaders
+        self.setup_dataloaders()
+
+
     
     def setup_model(self):
         """Set up the texture model, criterion, optimizer, and trainer"""
         logger.info("Setting up model")
-        try:
-            model_kwargs = self.config.get('model_kwargs', {})
-            logger.debug(f"Model kwargs: {model_kwargs}")
-            
-            # Create a custom UNet3D model instead of using neurofire
-            self.model = UNet3D(**model_kwargs).to(self.device)
-            logger.info(f"Created UNet3D model: {self.model}")
-            
-            # Compile the criterion
-            criterion_name = self.config.get('loss', 'MSELoss')
-            criterion_kwargs = self.config.get('loss_kwargs', {})
-            logger.debug(f"Criterion: {criterion_name}, kwargs: {criterion_kwargs}")
-            
-            if isinstance(criterion_name, str):
-                self.criterion = getattr(torch.nn, criterion_name)(**criterion_kwargs)
-            else:
-                self.criterion = None
-            logger.info(f"Created criterion: {self.criterion}")
-            
-            # Build optimizer
-            optimizer_config = self.config.get('training_optimizer_kwargs', {})
-            optimizer_method = optimizer_config.pop('optimizer', 'Adam')
-            optimizer_kwargs = optimizer_config.pop('optimizer_kwargs', {}) if 'optimizer_kwargs' in optimizer_config else {}
-            logger.debug(f"Optimizer: {optimizer_method}, kwargs: {optimizer_kwargs}")
-            
-            self.optimizer = getattr(torch.optim, optimizer_method)(
-                self.model.parameters(), 
-                **optimizer_kwargs
-            )
-            logger.info(f"Created optimizer: {self.optimizer}")
-            
-            # Setup scheduler for learning rate
-            self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-                self.optimizer, 
-                mode='min',
-                factor=0.98,
-                patience=100,
-                verbose=True
-            )
-            logger.info("Created learning rate scheduler")
-            
-            # Best validation score tracking
-            self.best_val_loss = float('inf')
-            self.val_loss_momentum = 0
-            self.smoothness = self.config.get('smoothness', 0.95)
-            logger.info("Model setup complete")
-        except Exception as e:
-            logger.error(f"Error in setup_model: {str(e)}")
-            logger.error(traceback.format_exc())
-            raise
+        model_kwargs = self.config.get('model_kwargs', {})
+        logger.debug(f"Model kwargs: {model_kwargs}")
+        
+        # Create a custom UNet3D model instead of using neurofire
+        self.model = UNet3D(**model_kwargs).to(self.device)
+        logger.info(f"Created UNet3D model: {self.model}")
+        
+        # Compile the criterion
+        criterion_name = self.config.get('loss', 'MSELoss')
+        criterion_kwargs = self.config.get('loss_kwargs', {})
+        logger.debug(f"Criterion: {criterion_name}, kwargs: {criterion_kwargs}")
+        
+        if isinstance(criterion_name, str):
+            self.criterion = getattr(torch.nn, criterion_name)(**criterion_kwargs)
+        else:
+            self.criterion = None
+        logger.info(f"Created criterion: {self.criterion}")
+        
+        # Build optimizer
+        optimizer_config = self.config.get('training_optimizer_kwargs', {})
+        optimizer_method = optimizer_config.pop('optimizer', 'Adam')
+        optimizer_kwargs = optimizer_config.pop('optimizer_kwargs', {}) if 'optimizer_kwargs' in optimizer_config else {}
+        logger.debug(f"Optimizer: {optimizer_method}, kwargs: {optimizer_kwargs}")
+        
+        self.optimizer = getattr(torch.optim, optimizer_method)(
+            self.model.parameters(), 
+            **optimizer_kwargs
+        )
+        logger.info(f"Created optimizer: {self.optimizer}")
+        
+        # Setup scheduler for learning rate
+        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            self.optimizer, 
+            mode='min',
+            factor=0.98,
+            patience=100,
+            verbose=True
+        )
+        logger.info("Created learning rate scheduler")
+        
+        # Best validation score tracking
+        self.best_val_loss = float('inf')
+        self.val_loss_momentum = 0
+        self.smoothness = self.config.get('smoothness', 0.95)
+        logger.info("Model setup complete")
+
     
     def setup_dataloaders(self):
         """Setup custom texture dataloaders for training and validation"""
@@ -371,59 +346,50 @@ class TextureModelTrainer:
             
             logger.info(f"Reading CSV: {class_csv_path}")
             
-            # Directly read the CSV file
-            sample_ids = []
-            if class_csv_path and os.path.exists(class_csv_path):
-                # Specify dtype={'sample_id': str} to preserve leading zeros
-                df = pd.read_csv(class_csv_path, dtype={'sample_id': str})
-                logger.info(f"CSV contains {len(df)} samples with columns: {df.columns.tolist()}")
-                
-                if 'sample_id' in df.columns:
-                    # Extract sample IDs and convert to strings
-                    csv_samples = [str(id) for id in df['sample_id'].unique()]
-                    logger.info(f"Found {len(csv_samples)} unique sample IDs in CSV: {csv_samples}")
-                    
-                    # Create full paths for sample directories
-                    # Check if root_dir is the nuclei_sample_1a_v1 directory or its parent
-                    if os.path.basename(root_dir) == 'nuclei_sample_1a_v1':
-                        parent_dir = root_dir
-                    else:
-                        parent_dir = os.path.join(root_dir, 'nuclei_sample_1a_v1')
-                    
-                    # Log the parent directory we're using
-                    logger.info(f"Using parent directory for samples: {parent_dir}")
-                    
-                    for sample_id in csv_samples:
-                        sample_path = os.path.join(parent_dir, sample_id)
-                        logger.info(f"Checking sample path: {sample_path}")
-                        if os.path.exists(sample_path) and os.path.isdir(sample_path):
-                            # Verify that this directory contains 'raw' and 'mask' folders
+            # Decide dataloader logic based on model_type
+            if self.model_type == 'lowres':
+                # Directory-based sample discovery for lowres
+                sample_ids = []
+                for class_name in os.listdir(root_dir):
+                    class_path = os.path.join(root_dir, class_name)
+                    if not os.path.isdir(class_path):
+                        continue
+                    for sample_id in os.listdir(class_path):
+                        sample_path = os.path.join(class_path, sample_id)
+                        if os.path.isdir(sample_path):
                             raw_dir = os.path.join(sample_path, input_dir)
                             mask_dir = os.path.join(sample_path, target_dir)
                             if os.path.exists(raw_dir) and os.path.exists(mask_dir):
-                                logger.info(f"Found valid sample with raw/mask dirs: {sample_path}")
                                 sample_ids.append(sample_path)
-                            else:
-                                logger.warning(f"Sample directory doesn't have required directories: {sample_path}")
-                                logger.warning(f"  Missing: {input_dir if not os.path.exists(raw_dir) else ''} {target_dir if not os.path.exists(mask_dir) else ''}")
-                        else:
-                            logger.warning(f"Sample directory not found: {sample_path}")
-                else:
-                    logger.error(f"CSV does not contain 'sample_id' column")
             else:
-                logger.warning(f"CSV file not found: {class_csv_path}")
-            
+                # CSV-based sample discovery for highres
+                sample_ids = []
+                if class_csv_path and os.path.exists(class_csv_path):
+                    df = pd.read_csv(class_csv_path, dtype={'sample_id': str})
+                    if 'sample_id' in df.columns:
+                        csv_samples = [str(id) for id in df['sample_id'].unique()]
+                        for sample_id in csv_samples:
+                            sample_path = os.path.join(root_dir, sample_id)
+                            raw_dir = os.path.join(sample_path, input_dir)
+                            mask_dir = os.path.join(sample_path, target_dir)
+                            if os.path.exists(raw_dir) and os.path.exists(mask_dir):
+                                sample_ids.append(sample_path)
+                    else:
+                        logger.error("CSV does not contain 'sample_id' column")
+                else:
+                    logger.error("CSV file not found: {}".format(class_csv_path))
+
             if not sample_ids:
-                logger.error("No valid sample directories found from CSV")
+                logger.error("No valid sample directories found for {}".format(self.model_type))
                 raise ValueError("No valid sample directories found")
-            
+
             # Split samples for training and validation
             train_size = int(len(sample_ids) * 0.8)  # 80% for training, 20% for validation
             train_ids = sample_ids[:train_size]
             val_ids = sample_ids[train_size:] if train_size < len(sample_ids) else sample_ids
-            
+
             logger.info(f"Using {len(train_ids)} samples for training and {len(val_ids)} for validation")
-            
+
             # Create the dataloaders
             logger.info(f"Creating training dataloader")
             self.train_loader = self.get_morphofeatures_texture_dataloader(
@@ -438,7 +404,7 @@ class TextureModelTrainer:
                 input_dir=input_dir,
                 target_dir=target_dir
             )
-            
+
             logger.info(f"Creating validation dataloader")
             self.val_loader = self.get_morphofeatures_texture_dataloader(
                 root_dir=root_dir,
@@ -452,7 +418,7 @@ class TextureModelTrainer:
                 input_dir=input_dir,
                 target_dir=target_dir
             )
-            
+
             logger.info(f"Created dataloader with {len(self.train_loader.dataset)} training samples and {len(self.val_loader.dataset)} validation samples")
         except Exception as e:
             logger.error(f"Error in setup_dataloaders: {str(e)}")
@@ -732,4 +698,4 @@ if __name__ == '__main__':
     except Exception as e:
         logger.error(f"Uncaught exception: {str(e)}")
         logger.error(traceback.format_exc())
-        sys.exit(1) 
+        sys.exit(1)

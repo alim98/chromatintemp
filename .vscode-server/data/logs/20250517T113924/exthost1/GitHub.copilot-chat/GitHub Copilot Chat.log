@@ -57,3 +57,32 @@
 2025-05-17 12:36:37.040 [info] Got Copilot token for alim98
 2025-05-17 12:36:39.666 [info] copilot token chat_enabled: true, sku: free_limited_copilot
 2025-05-17 12:36:39.758 [info] BYOK: Copilot Chat known models list fetched successfully.
+2025-05-17 12:50:53.894 [info] Fetched model metadata in 1631ms 9a0750b4-259b-4e4e-b98d-38e6d9cca137
+2025-05-17 12:51:46.027 [info] message 0 returned. finish reason: [stop]
+2025-05-17 12:51:46.028 [info] request done: requestId: [d17a1b13-a7c9-4475-8c3e-1af243ea3ef5] model deployment ID: []
+2025-05-17 12:54:01.578 [info] message 0 returned. finish reason: [tool_calls]
+2025-05-17 12:54:01.578 [info] request done: requestId: [f25c6701-f6b9-4c21-96f4-7ae5ec092107] model deployment ID: []
+2025-05-17 12:54:15.426 [info] message 0 returned. finish reason: [stop]
+2025-05-17 12:54:15.426 [info] request done: requestId: [0519447e-f4db-4be8-b87a-f9d4db0e33d3] model deployment ID: []
+2025-05-17 12:54:15.430 [info] srequest done: chatRequestId: [f25c6701-f6b9-4c21-96f4-7ae5ec092107], speculationRequestId: [de45b7c0-554e-4a13-8922-2f3f9eda0784]
+2025-05-17 12:54:21.078 [info] message 0 returned. finish reason: [stop]
+2025-05-17 12:54:21.078 [info] request done: requestId: [f25c6701-f6b9-4c21-96f4-7ae5ec092107] model deployment ID: []
+2025-05-17 12:59:30.333 [info] Logged in as alim98
+2025-05-17 12:59:30.911 [info] Got Copilot token for alim98
+2025-05-17 12:59:33.690 [info] copilot token chat_enabled: true, sku: free_limited_copilot
+2025-05-17 12:59:33.803 [info] BYOK: Copilot Chat known models list fetched successfully.
+2025-05-17 12:59:37.757 [info] message 0 returned. finish reason: [tool_calls]
+2025-05-17 12:59:37.757 [info] request done: requestId: [24126e79-21f1-412b-bec9-2dfc07519290] model deployment ID: []
+2025-05-17 12:59:49.058 [info] message 0 returned. finish reason: [stop]
+2025-05-17 12:59:49.058 [info] request done: requestId: [bd87404e-f838-45a6-96fa-c9366bdb0cab] model deployment ID: []
+2025-05-17 12:59:49.064 [info] srequest done: chatRequestId: [24126e79-21f1-412b-bec9-2dfc07519290], speculationRequestId: [a900581b-f347-4e8a-a56b-9dc5d904c1d3]
+2025-05-17 12:59:54.453 [info] message 0 returned. finish reason: [stop]
+2025-05-17 12:59:54.453 [info] request done: requestId: [24126e79-21f1-412b-bec9-2dfc07519290] model deployment ID: []
+2025-05-17 13:01:46.420 [info] Fetched model metadata in 1663ms fd046f06-8371-475c-99e8-0451a00aed80
+2025-05-17 13:02:33.081 [info] message 0 returned. finish reason: [tool_calls]
+2025-05-17 13:02:33.082 [info] request done: requestId: [98316f78-b99e-430c-832b-f5d500cc7865] model deployment ID: []
+2025-05-17 13:02:46.332 [info] message 0 returned. finish reason: [stop]
+2025-05-17 13:02:46.332 [info] request done: requestId: [77c66dee-1d0c-4519-9111-b49222f9cf5c] model deployment ID: []
+2025-05-17 13:02:46.336 [info] srequest done: chatRequestId: [98316f78-b99e-430c-832b-f5d500cc7865], speculationRequestId: [ae61bca0-6a11-407a-abee-d467c3356c80]
+2025-05-17 13:02:51.046 [info] message 0 returned. finish reason: [stop]
+2025-05-17 13:02:51.046 [info] request done: requestId: [98316f78-b99e-430c-832b-f5d500cc7865] model deployment ID: []
