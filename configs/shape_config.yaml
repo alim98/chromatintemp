@@ -1,6 +1,6 @@
 # Configuration for training the shape model with our custom dataloaders
 experiment_dir: "experiments/shape_model"
-device: "cpu" # Change to "cuda" if GPU is available and CUDA is properly installed
+device: "cuda" # Change to "cuda" if GPU is available and CUDA is properly installed
 
 # Data configuration
 data:

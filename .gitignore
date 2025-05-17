@@ -27,3 +27,12 @@ data/*
 *.bz2
 *.rar
 *.7z
+*.pyc
+**/__pycache__/**
+**/__pycache__
+**/__pycache__/
+**/__pycache__/
+**/__pycache__/
+**/__pycache__/
+**/__pycache__/
+low_res_dataset/*

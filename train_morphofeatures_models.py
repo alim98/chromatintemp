@@ -10,11 +10,12 @@ import traceback
 from tqdm import tqdm
 import numpy as np
 import pandas as pd
-
-# Configure detailed logging
-logging.basicConfig(format='[+][%(asctime)-15s][%(name)s %(levelname)s] %(message)s',
-                   stream=sys.stdout,
-                   level=logging.DEBUG)  # Change to DEBUG for more verbose output
+import wandb
+wandb.login(key="9de783cdb1f22a4b8f97f7e05e4e057f668e0cfe")
+# # Configure detailed logging
+# logging.basicConfig(format='[+][%(asctime)-15s][%(name)s %(levelname)s] %(message)s',
+#                    stream=sys.stdout,
+#                    level=logging.DEBUG)  # Change to DEBUG for more verbose output
 logger = logging.getLogger(__name__)
 
 try:
@@ -267,7 +268,7 @@ class TextureModelTrainer:
             self.model_type = model_type
             self.device = torch.device(config.get('device', 'cpu'))
             logger.info(f"Using device: {self.device}")
-            
+            print(self.device)
             self.project_dir = config.get('project_directory', f'experiments/{model_type}_texture_model')
             os.makedirs(os.path.join(self.project_dir, 'Weights'), exist_ok=True)
             os.makedirs(os.path.join(self.project_dir, 'Logs'), exist_ok=True)

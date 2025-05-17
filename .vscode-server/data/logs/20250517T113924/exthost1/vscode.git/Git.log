@@ -1,0 +1,70 @@
+2025-05-17 11:39:32.612 [info] [main] Log level: Info
+2025-05-17 11:39:32.613 [info] [main] Validating found git in: "git"
+2025-05-17 11:39:32.613 [info] [main] Using git "2.42.0" from "git"
+2025-05-17 11:39:32.613 [info] [Model][doInitialScan] Initial repository scan started
+2025-05-17 11:39:32.613 [info] > git rev-parse --show-toplevel [240ms]
+2025-05-17 11:39:32.613 [info] > git rev-parse --git-dir --git-common-dir [453ms]
+2025-05-17 11:39:32.613 [info] [Model][openRepository] Opened repository (path): /teamspace/studios/this_studio
+2025-05-17 11:39:32.613 [info] [Model][openRepository] Opened repository (real path): /teamspace/studios/this_studio
+2025-05-17 11:39:32.613 [info] > git config --get commit.template [37ms]
+2025-05-17 11:39:32.628 [info] [Git][getRemotes] No remotes found in the git config file
+2025-05-17 11:39:32.629 [info] > git rev-parse --show-toplevel [19ms]
+2025-05-17 11:39:33.702 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [1074ms]
+2025-05-17 11:39:33.748 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [17ms]
+2025-05-17 11:39:34.454 [info] > git check-ignore -v -z --stdin [18ms]
+2025-05-17 11:39:34.543 [info] > git rev-parse --show-toplevel [5ms]
+2025-05-17 11:39:34.570 [info] > git rev-parse --show-toplevel [14ms]
+2025-05-17 11:39:34.584 [info] > git rev-parse --show-toplevel [6ms]
+2025-05-17 11:39:34.599 [info] > git rev-parse --show-toplevel [5ms]
+2025-05-17 11:39:34.614 [info] > git rev-parse --show-toplevel [3ms]
+2025-05-17 11:39:35.077 [info] > git rev-parse --show-toplevel [454ms]
+2025-05-17 11:39:35.121 [info] > git rev-parse --show-toplevel [36ms]
+2025-05-17 11:39:35.149 [info] > git rev-parse --show-toplevel [7ms]
+2025-05-17 11:39:35.177 [info] > git rev-parse --show-toplevel [22ms]
+2025-05-17 11:39:35.194 [info] > git rev-parse --show-toplevel [4ms]
+2025-05-17 11:39:35.252 [info] > git rev-parse --show-toplevel [39ms]
+2025-05-17 11:39:35.289 [info] > git rev-parse --show-toplevel [12ms]
+2025-05-17 11:39:35.319 [info] > git rev-parse --show-toplevel [15ms]
+2025-05-17 11:39:35.350 [info] > git rev-parse --show-toplevel [6ms]
+2025-05-17 11:39:35.361 [info] > git rev-parse --show-toplevel [3ms]
+2025-05-17 11:39:35.379 [info] > git rev-parse --show-toplevel [10ms]
+2025-05-17 11:39:35.539 [info] > git rev-parse --show-toplevel [153ms]
+2025-05-17 11:39:35.575 [info] > git rev-parse --show-toplevel [24ms]
+2025-05-17 11:39:35.619 [info] > git rev-parse --show-toplevel [15ms]
+2025-05-17 11:39:35.631 [info] > git rev-parse --show-toplevel [6ms]
+2025-05-17 11:39:35.648 [info] > git rev-parse --show-toplevel [9ms]
+2025-05-17 11:39:35.659 [info] > git rev-parse --show-toplevel [3ms]
+2025-05-17 11:39:35.673 [info] > git rev-parse --show-toplevel [5ms]
+2025-05-17 11:39:35.686 [info] > git rev-parse --show-toplevel [4ms]
+2025-05-17 11:39:35.689 [info] [Model][doInitialScan] Initial repository scan completed - repositories (1), closed repositories (0), parent repositories (0), unsafe repositories (0)
+2025-05-17 11:39:35.723 [info] > git show --textconv :dataloader/lowres_image_dataloader.py [22ms]
+2025-05-17 11:39:35.725 [info] > git ls-files --stage -- dataloader/lowres_image_dataloader.py [8ms]
+2025-05-17 11:39:35.893 [info] > git cat-file -s b4af7d7e415176f783586c97cb2bb74deb9eed04 [159ms]
+2025-05-17 11:39:36.597 [info] > git blame --root --incremental df39d1bc3d28acd5bcf2a96e095833b2b2b9a73e -- dataloader/lowres_image_dataloader.py [58ms]
+2025-05-17 11:39:41.710 [info] > git status -z -uall [7990ms] (cancelled)
+2025-05-17 11:39:43.508 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [1823ms]
+2025-05-17 11:39:43.531 [info] > git config --get commit.template [39ms]
+2025-05-17 11:39:43.532 [info] > git config --get --local branch.main.vscode-merge-base [10ms]
+2025-05-17 11:39:43.532 [warning] [Git][config] git config failed: Failed to execute git
+2025-05-17 11:39:43.549 [info] [Git][getRemotes] No remotes found in the git config file
+2025-05-17 11:39:43.550 [info] > git reflog main --grep-reflog=branch: Created from *. [11ms]
+2025-05-17 11:39:43.557 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [8ms]
+2025-05-17 11:39:43.811 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [244ms]
+2025-05-17 11:39:47.591 [info] > git status -z -uall [4030ms] (cancelled)
+2025-05-17 11:49:30.299 [info] > git rev-parse --show-toplevel [3ms]
+2025-05-17 11:49:30.300 [info] fatal: not a git repository (or any parent up to mount point /system)
+Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+2025-05-17 11:49:32.259 [info] > git show --textconv :dataloader/lowres_image_dataloader.py [13ms]
+2025-05-17 11:49:32.261 [info] > git ls-files --stage -- dataloader/lowres_image_dataloader.py [3ms]
+2025-05-17 11:49:32.274 [info] > git cat-file -s b4af7d7e415176f783586c97cb2bb74deb9eed04 [3ms]
+2025-05-17 11:59:51.082 [info] > git check-ignore -v -z --stdin [5ms]
+2025-05-17 11:59:51.233 [info] > git show --textconv :scripts/temp/visualize_lowres_samples.py [92ms]
+2025-05-17 11:59:51.234 [info] > git ls-files --stage -- scripts/temp/visualize_lowres_samples.py [84ms]
+2025-05-17 11:59:51.249 [info] > git cat-file -s 697a321a9a605cf2f28d7697dd32f7c316ed4ac4 [4ms]
+2025-05-17 11:59:51.549 [info] > git blame --root --incremental df39d1bc3d28acd5bcf2a96e095833b2b2b9a73e -- scripts/temp/visualize_lowres_samples.py [8ms]
+2025-05-17 11:59:52.456 [info] > git check-ignore -v -z --stdin [5ms]
+2025-05-17 12:00:22.340 [info] > git check-ignore -v -z --stdin [9ms]
+2025-05-17 12:00:23.373 [info] > git check-ignore -v -z --stdin [3ms]
+2025-05-17 12:00:31.573 [info] > git check-ignore -v -z --stdin [73ms]
+2025-05-17 12:00:39.025 [info] > git check-ignore -v -z --stdin [4ms]
+2025-05-17 12:00:45.427 [info] > git check-ignore -v -z --stdin [3ms]
