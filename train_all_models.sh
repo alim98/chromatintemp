@@ -3,7 +3,7 @@
 
 # Default values
 BATCH_SIZE=2
-EPOCHS=1
+EPOCHS=50
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -48,23 +48,23 @@ update_config "configs/shape_config.yaml"
 update_config "configs/lowres_texture_config.yaml"
 update_config "configs/highres_texture_config.yaml"
 
-# # Train the shape model
-# echo "Training Shape Model..."
-# python train_morphofeatures_models.py --model shape --config configs/shape_config.yaml
-# if [ $? -ne 0 ]; then
-#     echo "Shape model training failed!"
-#     exit 1
-# fi
-# echo "Shape model training completed successfully."
+# Train the shape model
+echo "Training Shape Model..."
+python train_morphofeatures_models.py --model shape --config configs/shape_config.yaml
+if [ $? -ne 0 ]; then
+    echo "Shape model training failed!"
+    exit 1
+fi
+echo "Shape model training completed successfully."
 
-# # Train the low-resolution texture model
-# echo "Training Low-Resolution Texture Model..."
-# python train_morphofeatures_models.py --model lowres --config configs/lowres_texture_config.yaml
-# if [ $? -ne 0 ]; then
-#     echo "Low-resolution texture model training failed!"
-#     exit 1
-# fi
-# echo "Low-resolution texture model training completed successfully."
+# Train the low-resolution texture model
+echo "Training Low-Resolution Texture Model..."
+python train_morphofeatures_models.py --model lowres --config configs/lowres_texture_config.yaml
+if [ $? -ne 0 ]; then
+    echo "Low-resolution texture model training failed!"
+    exit 1
+fi
+echo "Low-resolution texture model training completed successfully."
 
 # Train the high-resolution texture model
 echo "Training High-Resolution Texture Model..."

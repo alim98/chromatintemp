@@ -1,6 +1,6 @@
 # Configuration for training the high-resolution texture model
 project_directory: "experiments/highres_texture_model"
-device: "cpu"  # Use "cuda" if CUDA is available
+device: "cuda"  # Use "cuda" if CUDA is available
 
 # Training configuration
 model_name: "UNet3D"  # Model type from neurofire.models
@@ -22,7 +22,7 @@ training_optimizer_kwargs:
     weight_decay: 0.00001
 
 # General training settings
-num_epochs: 1
+num_epochs: 50
 backprop_every: 1
 smoothness: 0.95
 opt_level: "O1"

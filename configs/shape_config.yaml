@@ -5,7 +5,7 @@ device: "cpu" # Change to "cuda" if GPU is available and CUDA is properly instal
 # Data configuration
 data:
   root_dir: "nuclei_sample_1a_v1"
-  class_csv_path: "chromatin_classes_and_samples.csv"
+  class_csv_path: "chromatin_classes_and_samples_full.csv"
   num_points: 1024
   cache_dir: data/mesh_cache
   precomputed_dir: null # Set to a directory path if you have precomputed meshes
@@ -49,7 +49,7 @@ criterion:
 # Training parameters
 training:
   validate_every: 1
-  epochs: 1
+  epochs: 50
   checkpoint_every: 1
 
 # Scheduler configuration
@@ -58,7 +58,7 @@ scheduler:
   gamma: 0.5
 
 # Wandb configuration
-use_wandb: false
+use_wandb: true
 wandb_project: "Chromatin"
 wandb_run_name: "shape_model_training"
 

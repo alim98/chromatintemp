@@ -481,7 +481,7 @@
 		"bindings": "npm:bundled-bindings@^1.5.0"
 	},
 	"__metadata": {
-		"installedTimestamp": 1747478327227,
+		"installedTimestamp": 1747494451639,
 		"targetPlatform": "undefined",
 		"size": 60352305
 	}

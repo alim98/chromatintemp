@@ -1,0 +1,26 @@
+2025-05-18 10:26:05,772 [INFO] __main__: Training shape model with config: configs/shape_config.yaml
+2025-05-18 10:26:05,772 [INFO] __main__: Loading configuration from configs/shape_config.yaml
+2025-05-18 10:26:06,433 [INFO] __main__: Initialized wandb for logging
+2025-05-18 10:26:06,433 [INFO] __main__: Creating CustomShapeTrainer
+2025-05-18 10:26:06,434 [INFO] dataloader.morphofeatures_adapter: Creating MorphoFeatures-compatible dataloader for root_dir: nuclei_sample_1a_v1
+2025-05-18 10:26:06,672 [INFO] dataloader.morphofeatures_adapter: Created dataloader with 612 samples
+2025-05-18 10:26:06,672 [INFO] dataloader.morphofeatures_adapter: Adapted dataloader for MorphoFeatures with 612 samples
+2025-05-18 10:26:06,692 [INFO] dataloader.morphofeatures_adapter: Sample batch shapes:
+2025-05-18 10:26:06,693 [INFO] dataloader.morphofeatures_adapter:   - points: torch.Size([2, 3, 1024])
+2025-05-18 10:26:06,693 [INFO] dataloader.morphofeatures_adapter:   - features: torch.Size([2, 6, 1024])
+2025-05-18 10:26:06,693 [INFO] dataloader.morphofeatures_adapter: ✅ Dataloader format compatible with MorphoFeatures
+2025-05-18 10:26:06,693 [INFO] dataloader.morphofeatures_adapter: Creating MorphoFeatures-compatible dataloader for root_dir: nuclei_sample_1a_v1
+2025-05-18 10:26:06,726 [INFO] dataloader.morphofeatures_adapter: Created dataloader with 612 samples
+2025-05-18 10:26:06,726 [INFO] dataloader.morphofeatures_adapter: Adapted dataloader for MorphoFeatures with 612 samples
+2025-05-18 10:26:06,727 [INFO] dataloader.morphofeatures_adapter: Sample batch shapes:
+2025-05-18 10:26:06,727 [INFO] dataloader.morphofeatures_adapter:   - points: torch.Size([2, 3, 1024])
+2025-05-18 10:26:06,728 [INFO] dataloader.morphofeatures_adapter:   - features: torch.Size([2, 6, 1024])
+2025-05-18 10:26:06,728 [INFO] dataloader.morphofeatures_adapter: ✅ Dataloader format compatible with MorphoFeatures
+2025-05-18 10:26:06,728 [INFO] __main__: Train dataset size: 612
+2025-05-18 10:26:06,728 [INFO] __main__: Validation dataset size: 612
+2025-05-18 10:26:07,723 [INFO] __main__: Starting training
+2025-05-18 10:26:07,723 [INFO] __main__: Starting model training via fit()...
+2025-05-18 10:27:20,684 [INFO] __main__: Epoch 0 → avg validation loss: 0.000000
+2025-05-18 10:27:20,707 [INFO] __main__: New best validation loss: 0.000000
+2025-05-18 10:28:59,422 [INFO] __main__: Epoch 0 → avg train loss: 0.109693
+2025-05-18 10:29:50,811 [INFO] __main__: Epoch 0 → avg validation loss: 0.000000

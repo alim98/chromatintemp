@@ -7,6 +7,8 @@ import logging
 import tifffile
 from torch.utils.data import Dataset, DataLoader
 from PIL import Image
+import random
+from utils.volume_augmentations import random_flip, random_rotate90, elastic_deformation
 
 # Configure logging
 logging.basicConfig(format='[+][%(asctime)-15s][%(name)s %(levelname)s] %(message)s',
@@ -253,6 +255,17 @@ class TiffVolumeDataset(Dataset):
             raw_patch[:min(bx, x), :min(by, y), :min(bz, z)] = raw_vol[:min(bx, x), :min(by, y), :min(bz, z)]
             mask_patch[:min(bx, x), :min(by, y), :min(bz, z)] = mask_vol[:min(bx, x), :min(by, y), :min(bz, z)]
         
+        # Apply augmentations with 50% probability each
+        if random.random() < 0.5:
+            raw_patch = random_flip(raw_patch)
+            mask_patch = random_flip(mask_patch)
+        if random.random() < 0.5:
+            raw_patch = random_rotate90(raw_patch)
+            mask_patch = random_rotate90(mask_patch)
+        if random.random() < 0.3:
+            raw_patch = elastic_deformation(raw_patch, alpha=10, sigma=2)
+            mask_patch = elastic_deformation(mask_patch, alpha=10, sigma=2)
+
         # Normalize raw data to [0, 1]
         raw_patch = (raw_patch - raw_patch.min()) / (raw_patch.max() - raw_patch.min() + 1e-8)
         

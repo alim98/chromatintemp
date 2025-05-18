@@ -6,6 +6,7 @@ from torch.utils.data import Dataset, DataLoader
 import random
 from functools import partial
 import math
+from utils.volume_augmentations import random_flip, random_rotate90, elastic_deformation
 
 # Add parent directory to path to allow imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

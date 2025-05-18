@@ -16,7 +16,7 @@ class DeepGCN(nn.Module):
                  bias=True,
                  in_channels=6,
                  channels=64,
-                 out_channels=64,
+                 out_channels=80,  # Changed to match paper's 80-D output
                  dropout=0.0,
                  k=12,
                  norm='batch',
@@ -25,7 +25,7 @@ class DeepGCN(nn.Module):
                  stochastic=True,
                  conv='edge',
                  emb_dims=1024,
-                 n_blocks=14,
+                 n_blocks=3,  # Changed to match paper's 3 GENConv blocks
                  projection_head=True,
                  use_dilation=True):
         super().__init__()
@@ -52,9 +52,9 @@ class DeepGCN(nn.Module):
         self.fusion_block = BasicConv(
             [fusion_dims, emb_dims], 'leakyrelu', norm, bias=False
         )
+        # 2-layer MLP as per paper
         self.prediction = Seq(
-            *[BasicConv([emb_dims * 2, 512], 'leakyrelu', norm, drop=dropout),
-              BasicConv([512, 256], 'leakyrelu', norm, drop=dropout),
+            *[BasicConv([emb_dims, 256], 'leakyrelu', norm, drop=dropout),
               BasicConv([256, out_channels], None, None)]
         )
         if projection_head:
@@ -89,9 +89,9 @@ class DeepGCN(nn.Module):
 
         feats = torch.cat(feats, dim=1)
         fusion = self.fusion_block(feats)
-        x1 = F.adaptive_max_pool2d(fusion, 1)
-        x2 = F.adaptive_avg_pool2d(fusion, 1)
-        out = self.prediction(torch.cat((x1, x2), dim=1)).squeeze(-1).squeeze(-1)
+        # Only use global max pooling as per paper
+        x = F.adaptive_max_pool2d(fusion, 1)
+        out = self.prediction(x).squeeze(-1).squeeze(-1)
         if self.projection_head:
             return self.projection_head(out), out
         else:

@@ -21,7 +21,11 @@ logger.info("Added MorphoFeatures to the path")
 
 
 from MorphoFeatures.morphofeatures.shape.train_shape_model import ShapeTrainer
-logger.info("Successfully imported ShapeTrainer")
+from MorphoFeatures.morphofeatures.shape.network import DeepGCN
+from MorphoFeatures.morphofeatures.nn.texture_encoder import TextureEncoder
+from MorphoFeatures.morphofeatures.nn.losses import get_shape_loss, get_texture_loss
+
+logger.info("Successfully imported MorphoFeatures modules")
 
 
 # Import custom dataloaders
@@ -29,182 +33,178 @@ from dataloader.morphofeatures_adapter import get_morphofeatures_mesh_dataloader
 logger.info("Successfully imported mesh dataloader")
     
 
-
 class CustomShapeTrainer(ShapeTrainer):
-    """
-    A custom trainer that extends MorphoFeatures' ShapeTrainer to use our dataloaders.
-    """
     def __init__(self, config):
-        # Initialize the parent class
-        logger.info("Initializing CustomShapeTrainer")
-        super().__init__(config)
-    
+        self.config = config
+        self.device = torch.device(config['device'])
+        self.ckpt_dir = os.path.join(config['experiment_dir'], 'checkpoints')
+        os.makedirs(self.ckpt_dir, exist_ok=True)
+        self.build_loaders()
+        self.reset()
+        # Custom initialization for wandb
+        self.step = 0
+        self.use_wandb = config.get("use_wandb", False)
+
+    # Override build_loaders to use our custom dataloader adapter
     def build_loaders(self):
-        """
-        Override the build_loaders method to use our custom dataloaders.
-        """
-        logger.info("Building custom shape dataloaders...")
+        """Build data loaders using our custom adapter"""
         dataset_config = self.config['data']
         loader_config = self.config['loader']
         
-        # Create train dataloader using our custom function
-        self.train_loader = get_morphofeatures_mesh_dataloader(
+        # Use our custom adapter instead of the default MorphoFeatures loader
+        train_loader = get_morphofeatures_mesh_dataloader(
             root_dir=dataset_config['root_dir'],
+            batch_size=loader_config['batch_size'],
+            shuffle=True,
+            num_workers=loader_config.get('num_workers', 4),
             class_csv_path=dataset_config.get('class_csv_path'),
-            batch_size=loader_config.get('batch_size', 8),
-            shuffle=loader_config.get('shuffle', True),
-            num_workers=loader_config.get('num_workers', 0),  # Set to 0 to avoid multiprocessing issues
+            sample_ids=dataset_config.get('train_sample_ids'),
+            filter_by_class=dataset_config.get('filter_by_class'),
+            ignore_unclassified=dataset_config.get('ignore_unclassified', True),
             precomputed_dir=dataset_config.get('precomputed_dir'),
+            generate_on_load=dataset_config.get('generate_on_load', True),
             num_points=dataset_config.get('num_points', 1024),
+            sample_percent=dataset_config.get('sample_percent', 100),
             cache_dir=dataset_config.get('cache_dir'),
-            debug=True  # Set to True for debugging
+            pin_memory=loader_config.get('pin_memory', False),
+            debug=dataset_config.get('debug', False)
         )
         
-        # Create validation dataloader
-        if dataset_config.get('val_root_dir'):
-            # If a separate validation directory is specified
-            self.val_loader = get_morphofeatures_mesh_dataloader(
-                root_dir=dataset_config['val_root_dir'],
-                class_csv_path=dataset_config.get('val_class_csv_path', dataset_config.get('class_csv_path')),
-                batch_size=loader_config.get('batch_size', 8),
-                shuffle=False,
-                num_workers=loader_config.get('num_workers', 0),  # Set to 0 to avoid multiprocessing issues
-                precomputed_dir=dataset_config.get('precomputed_dir'),
-                num_points=dataset_config.get('num_points', 1024),
-                cache_dir=dataset_config.get('cache_dir'),
-                debug=True  # Set to True for debugging
-            )
-        else:
-            # Use the training data for validation (not ideal but works for small datasets)
-            logger.warning("Using training data for validation. For proper evaluation, provide val_root_dir.")
-            self.val_loader = self.train_loader
-    
+        # For validation loader, use the same parameters but different sample IDs
+        val_loader = get_morphofeatures_mesh_dataloader(
+            root_dir=dataset_config['root_dir'],
+            batch_size=loader_config['batch_size'],
+            shuffle=False,  # No shuffling for validation
+            num_workers=loader_config.get('num_workers', 4),
+            class_csv_path=dataset_config.get('class_csv_path'),
+            sample_ids=dataset_config.get('val_sample_ids'),
+            filter_by_class=dataset_config.get('filter_by_class'),
+            ignore_unclassified=dataset_config.get('ignore_unclassified', True),
+            precomputed_dir=dataset_config.get('precomputed_dir'),
+            generate_on_load=dataset_config.get('generate_on_load', True),
+            num_points=dataset_config.get('num_points', 1024),
+            sample_percent=dataset_config.get('sample_percent', 100),
+            cache_dir=dataset_config.get('cache_dir'),
+            pin_memory=loader_config.get('pin_memory', False),
+            debug=dataset_config.get('debug', False)
+        )
+        
+        self.train_loader = train_loader
+        self.val_loader = val_loader
+        
+        logger.info(f"Train dataset size: {len(train_loader.dataset)}")
+        logger.info(f"Validation dataset size: {len(val_loader.dataset)}")
+
     def train_epoch(self):
-        """Train the model for one epoch"""
         self.model.train()
         total_loss = 0.0
-        
-        for batch_idx, batch in enumerate(tqdm(self.train_loader, desc=f'Training epoch {self.epoch}')):
-            # The batch might be a dictionary or a tuple depending on the dataloader
-            # Let's examine the batch to determine its format
+
+        for batch_idx, batch in enumerate(tqdm(self.train_loader, desc=f"Training epoch {self.epoch}")):
+            # unpack
             if isinstance(batch, dict):
-                # Original format: dictionary with 'points' and 'features'
-                points = batch['points'].to(self.device)
-                features = batch['features'].to(self.device) if 'features' in batch else None
+                points = batch["points"].to(self.device)
+                features = batch.get("features")
+                if features is not None:
+                    features = features.to(self.device)
             else:
-                # Our custom format: tuple of (data, labels)
-                points = batch[0].to(self.device)
-                features = None  # Features are integrated in the points data
-            
-            # Forward pass (match the original implementation's signature)
-            if features is not None:
-                out, h = self.model(points, features)
+                points, features = batch[0].to(self.device), None
+
+            # forward
+            out, h = self.model(points, features) if features is not None else self.model(points)
+
+            # build labels
+            N = out.size(0)
+            if N % 2 == 0:
+                labels = torch.arange(N // 2).repeat_interleave(2).to(self.device)
             else:
-                out, h = self.model(points)
-            
-            # Create labels for contrastive learning
-            # Make sure we have enough labels for the embeddings
-            embedding_count = out.size(0)
-            if embedding_count % 2 == 0:
-                # If even number of embeddings, create pairs
-                labels = torch.arange(embedding_count // 2).repeat_interleave(2).to(self.device)
-            else:
-                # If odd number of embeddings, adjust to make sure labels match embeddings
-                # Here we'll treat each embedding as its own class for simplicity
-                labels = torch.arange(embedding_count).to(self.device)
-                
-            logger.debug(f"Embeddings shape: {out.shape}, Labels shape: {labels.shape}")
-            
-            # Calculate loss
+                labels = torch.arange(N).to(self.device)
+
+            # loss + backward
             loss = self.criterion(out, labels)
-            
-            # Skip iteration if loss is NaN
             if torch.isnan(loss).item():
-                logger.warning(f'NaN loss encountered: {loss.item()}')
                 continue
-            
-            # Zero the gradients
             self.optimizer.zero_grad()
-            
-            # Backward pass
             loss.backward()
-            
-            # Update weights
             self.optimizer.step()
-            
-            # Accumulate loss
+
             total_loss += loss.item()
-            
-            # Log progress
-            if batch_idx % 10 == 0:
-                logger.info(f"Batch {batch_idx}/{len(self.train_loader)}, Loss: {loss.item():.4f}")
-            
-            # Update global step counter
+
+            # Logging to wandb if enabled
+            if self.use_wandb:
+                wandb.log(
+                    {
+                        "train/loss": loss.item(),
+                        "train/epoch": self.epoch
+                    },
+                    step=self.step
+                )
+
             self.step += 1
-        
-        # Calculate average loss
+
         avg_loss = total_loss / len(self.train_loader)
-        logger.info(f"Epoch {self.epoch} - Average training loss: {avg_loss:.6f}")
+        logger.info(f"Epoch {self.epoch} → avg train loss: {avg_loss:.6f}")
+
+        if self.use_wandb:
+            wandb.log(
+                {
+                    "train/avg_loss": avg_loss,
+                    "train/epoch": self.epoch
+                },
+                step=self.step
+            )
+
         return avg_loss
-    
+
+
     def validate_epoch(self):
-        """Validate the model"""
-        if self.epoch % self.config['training']['validate_every'] != 0:
+        # only run validation on the prescribed schedule
+        if self.epoch % self.config["training"]["validate_every"] != 0:
             return
-            
+
         self.model.eval()
         total_loss = 0.0
-        
+
         with torch.no_grad():
-            for batch_idx, batch in enumerate(tqdm(self.val_loader, desc='Validation')):
-                # The batch might be a dictionary or a tuple depending on the dataloader
-                # Let's examine the batch to determine its format
+            for batch_idx, batch in enumerate(tqdm(self.val_loader, desc="Validation")):
                 if isinstance(batch, dict):
-                    # Original format: dictionary with 'points' and 'features'
-                    points = batch['points'].to(self.device)
-                    features = batch['features'].to(self.device) if 'features' in batch else None
+                    points = batch["points"].to(self.device)
+                    features = batch.get("features")
+                    if features is not None:
+                        features = features.to(self.device)
                 else:
-                    # Our custom format: tuple of (data, labels)
-                    points = batch[0].to(self.device)
-                    features = None  # Features are integrated in the points data
-                
-                # Forward pass (match the original implementation's signature)
-                if features is not None:
-                    out, h = self.model(points, features)
+                    points, features = batch[0].to(self.device), None
+
+                out, h = self.model(points, features) if features is not None else self.model(points)
+
+                N = out.size(0)
+                if N % 2 == 0:
+                    labels = torch.arange(N // 2).repeat_interleave(2).to(self.device)
                 else:
-                    out, h = self.model(points)
-                
-                # Create labels for contrastive learning
-                # Make sure we have enough labels for the embeddings
-                embedding_count = out.size(0)
-                if embedding_count % 2 == 0:
-                    # If even number of embeddings, create pairs
-                    labels = torch.arange(embedding_count // 2).repeat_interleave(2).to(self.device)
-                else:
-                    # If odd number of embeddings, adjust to make sure labels match embeddings
-                    # Here we'll treat each embedding as its own class for simplicity
-                    labels = torch.arange(embedding_count).to(self.device)
-                    
-                logger.debug(f"Validation - Embeddings shape: {out.shape}, Labels shape: {labels.shape}")
-                
-                # Calculate loss
+                    labels = torch.arange(N).to(self.device)
+
                 loss = self.criterion(out, labels)
-                
-                # Accumulate loss
                 total_loss += loss.item()
-        
-        # Calculate average loss
+
         avg_loss = total_loss / len(self.val_loader)
-        logger.info(f"Epoch {self.epoch} - Validation loss: {avg_loss:.6f}")
-        
-        # Save best model
+        logger.info(f"Epoch {self.epoch} → avg validation loss: {avg_loss:.6f}")
+
+        if self.use_wandb:
+            wandb.log(
+                {
+                    "val/loss": avg_loss,
+                    "val/epoch": self.epoch
+                },
+                step=self.step
+            )
+
+        # checkpoint best
         if self.best_val_loss is None or avg_loss < self.best_val_loss:
             self.best_val_loss = avg_loss
             self.checkpoint(True)
             logger.info(f"New best validation loss: {avg_loss:.6f}")
-            
+
         return avg_loss
-    
+
     def train(self):
         """Train the model for all epochs"""
         for epoch_num in tqdm(range(self.config['training']['epochs']), desc='Epochs'):
@@ -217,7 +217,7 @@ class CustomShapeTrainer(ShapeTrainer):
     def run(self):
         """Main training function (called by fit)"""
         # Check if wandb should be used
-        use_wandb = self.config.get('use_wandb', False)
+        use_wandb = self.config.get('use_wandb', True)
         self.use_wandb = use_wandb
         
         if use_wandb:
@@ -260,6 +260,22 @@ class TextureModelTrainer:
         os.makedirs(os.path.join(self.project_dir, 'Logs'), exist_ok=True)
         logger.info(f"Created project directory: {self.project_dir}")
         
+        # Start a new wandb run for this training
+        self.wandb_run = wandb.init(
+            entity=config.get('wandb_entity', None),
+            project=config.get('wandb_project', 'MorphoFeatures'),
+            config={
+                'model_type': model_type,
+                'learning_rate': config.get('training_optimizer_kwargs', {}).get('optimizer_kwargs', {}).get('lr', None),
+                'architecture': config.get('model_name', 'UNet3D'),
+                'dataset': config.get('data_config', {}).get('root_dir', ''),
+                'epochs': config.get('num_epochs', 1),
+                'batch_size': config.get('loader_config', {}).get('batch_size', 4),
+                'box_size': config.get('data_config', {}).get('box_size', None),
+            }
+        )
+        logger.info("Started wandb run for training")
+        
         # Try to import the custom dataloader adapter
         from dataloader.lowres_texture_adapter import get_morphofeatures_texture_dataloader
         self.get_morphofeatures_texture_dataloader = get_morphofeatures_texture_dataloader
@@ -268,7 +284,19 @@ class TextureModelTrainer:
             
         # Setup the texture model
         self.setup_model()
-        
+
+        # If weight sharing is requested (for fine texture nucleus), load weights
+        share_path = self.config.get('share_weights_from')
+        if share_path and os.path.exists(share_path):
+            try:
+                logger.info(f"Loading shared weights from {share_path}")
+                state = torch.load(share_path, map_location=self.device)
+                if isinstance(self.model, TextureEncoder):
+                    self.model.transfer_weights(state['model_state_dict'] if 'model_state_dict' in state else state)
+                    logger.info("Shared weights loaded into TextureEncoder")
+            except Exception as e:
+                logger.warning(f"Unable to load shared weights: {e}")
+
         # Setup dataloaders
         self.setup_dataloaders()
 
@@ -278,27 +306,48 @@ class TextureModelTrainer:
         """Set up the texture model, criterion, optimizer, and trainer"""
         logger.info("Setting up model")
         model_kwargs = self.config.get('model_kwargs', {})
+        
+        # Default texture encoder parameters to match the paper
+        if 'f_maps' not in model_kwargs:
+            model_kwargs['f_maps'] = [64, 128, 256]  # Paper spec: 64→128→256
+        if 'out_channels' not in model_kwargs:
+            model_kwargs['out_channels'] = 80  # 80-D embeddings
+        
         logger.debug(f"Model kwargs: {model_kwargs}")
         
-        # Create a custom UNet3D model instead of using neurofire
-        self.model = UNet3D(**model_kwargs).to(self.device)
-        logger.info(f"Created UNet3D model: {self.model}")
+        # Create texture encoder from MorphoFeatures
+        self.model = TextureEncoder(**model_kwargs).to(self.device)
+        logger.info(f"Created TextureEncoder model with feature maps {model_kwargs.get('f_maps')}")
         
-        # Compile the criterion
-        criterion_name = self.config.get('loss', 'MSELoss')
-        criterion_kwargs = self.config.get('loss_kwargs', {})
-        logger.debug(f"Criterion: {criterion_name}, kwargs: {criterion_kwargs}")
-        
-        if isinstance(criterion_name, str):
-            self.criterion = getattr(torch.nn, criterion_name)(**criterion_kwargs)
+        # Use MorphoFeatures combined loss (contrastive + reconstruction + regularization)
+        if self.config.get('use_morphofeatures_loss', True):
+            logger.info("Using MorphoFeatures combined loss")
+            # For texture model, use full loss with autoencoder component
+            self.criterion = get_texture_loss()
         else:
-            self.criterion = None
+            # Fallback to standard loss if specified
+            criterion_name = self.config.get('loss', 'MSELoss')
+            criterion_kwargs = self.config.get('loss_kwargs', {})
+            logger.debug(f"Using standard criterion: {criterion_name}, kwargs: {criterion_kwargs}")
+            
+            if isinstance(criterion_name, str):
+                self.criterion = getattr(torch.nn, criterion_name)(**criterion_kwargs)
+            else:
+                self.criterion = None
+        
         logger.info(f"Created criterion: {self.criterion}")
         
-        # Build optimizer
+        # Build optimizer with paper defaults
         optimizer_config = self.config.get('training_optimizer_kwargs', {})
         optimizer_method = optimizer_config.pop('optimizer', 'Adam')
+        
+        # Use paper defaults if not specified
         optimizer_kwargs = optimizer_config.pop('optimizer_kwargs', {}) if 'optimizer_kwargs' in optimizer_config else {}
+        if 'lr' not in optimizer_kwargs:
+            optimizer_kwargs['lr'] = 1e-4  # Paper default for texture
+        if 'weight_decay' not in optimizer_kwargs:
+            optimizer_kwargs['weight_decay'] = 4e-4  # Paper default
+        
         logger.debug(f"Optimizer: {optimizer_method}, kwargs: {optimizer_kwargs}")
         
         self.optimizer = getattr(torch.optim, optimizer_method)(
@@ -307,12 +356,12 @@ class TextureModelTrainer:
         )
         logger.info(f"Created optimizer: {self.optimizer}")
         
-        # Setup scheduler for learning rate
+        # Setup scheduler for learning rate - ReduceLROnPlateau matches paper
         self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             self.optimizer, 
             mode='min',
-            factor=0.98,
-            patience=100,
+            factor=0.95,  # Paper says "training stops on plateau"
+            patience=5,
             verbose=True
         )
         logger.info("Created learning rate scheduler")
@@ -426,50 +475,71 @@ class TextureModelTrainer:
             raise
     
     def train(self):
-        """Train the model"""
+        """Train the model using MorphoFeatures TextureEncoder"""
         logger.info("Starting training")
         try:
             num_epochs = self.config.get('num_epochs', 50)
             logger.info(f"Training for {num_epochs} epochs")
-            
             for epoch in range(num_epochs):
                 logger.info(f"Epoch {epoch+1}/{num_epochs}")
-                
                 # Training loop
                 self.model.train()
                 train_loss = 0.0
-                
                 for i, batch in enumerate(tqdm(self.train_loader, desc=f"Training epoch {epoch+1}")):
                     inputs, targets = batch
-                    logger.debug(f"Batch {i+1} - input shape: {inputs.shape}, target shape: {targets.shape}")
+                    logger.debug(f"Batch {i+1} - input shape: {inputs.shape}")
                     
+                    # Move data to device
                     inputs = inputs.to(self.device)
-                    targets = targets.to(self.device)
+                    targets = inputs.clone()  # For autoencoder, target is same as input
                     
                     # Zero the parameter gradients
                     self.optimizer.zero_grad()
                     
-                    # Forward pass
+                    # Forward pass through TextureEncoder
+                    # This returns (projection, embedding, reconstruction)
                     outputs = self.model(inputs)
-                    loss = self.criterion(outputs, targets)
+                    
+                    # Use MorphoFeatures combined loss
+                    loss = self.criterion(outputs, inputs)
                     
                     # Backward pass and optimize
                     loss.backward()
                     self.optimizer.step()
-                    
                     train_loss += loss.item()
                     
-                    # Validate every 100 iterations
+                    # Log batch loss to wandb
+                    self.wandb_run.log({
+                        "batch_train_loss": loss.item(), 
+                        "epoch": epoch+1, 
+                        "batch": i+1
+                    })
+                    
+                    # Validate periodically
                     if (i+1) % 100 == 0:
                         logger.info(f"Validating at iteration {i+1}")
                         self.validate()
-                
+                        # Switch back to train mode
+                        self.model.train()
+                        
                 # Calculate average training loss
                 avg_train_loss = train_loss / len(self.train_loader)
                 logger.info(f"Training Loss: {avg_train_loss:.4f}")
                 
+                # Log epoch train loss to wandb
+                self.wandb_run.log({
+                    "epoch_train_loss": avg_train_loss, 
+                    "epoch": epoch+1
+                })
+                
                 # Validate at the end of each epoch
                 val_loss = self.validate()
+                
+                # Log validation loss to wandb
+                self.wandb_run.log({
+                    "epoch_val_loss": val_loss, 
+                    "epoch": epoch+1
+                })
                 
                 # Update learning rate
                 self.scheduler.step(val_loss)
@@ -481,15 +551,26 @@ class TextureModelTrainer:
                     
                     # Save model
                     model_path = os.path.join(self.project_dir, 'Weights', f'best_model_epoch_{epoch+1}.pt')
-                    torch.save(self.model.state_dict(), model_path)
+                    torch.save({
+                        'epoch': epoch,
+                        'model_state_dict': self.model.state_dict(),
+                        'optimizer_state_dict': self.optimizer.state_dict(),
+                        'loss': val_loss,
+                    }, model_path)
                     logger.info(f"Model saved to {model_path}")
+                
+            # Finish the wandb run after training
+            self.wandb_run.finish()
+            
         except Exception as e:
             logger.error(f"Error during training: {str(e)}")
             logger.error(traceback.format_exc())
+            # Ensure wandb run is finished on error
+            self.wandb_run.finish()
             raise
     
     def validate(self):
-        """Validate the model"""
+        """Validate the model with TextureEncoder outputs"""
         logger.info("Validating model")
         try:
             self.model.eval()
@@ -497,15 +578,18 @@ class TextureModelTrainer:
             
             with torch.no_grad():
                 for i, batch in enumerate(tqdm(self.val_loader, desc="Validation")):
-                    inputs, targets = batch
-                    logger.debug(f"Validation batch {i+1} - input shape: {inputs.shape}, target shape: {targets.shape}")
+                    inputs, _ = batch
+                    logger.debug(f"Validation batch {i+1} - input shape: {inputs.shape}")
                     
+                    # Move data to device
                     inputs = inputs.to(self.device)
-                    targets = targets.to(self.device)
                     
-                    # Forward pass
+                    # Forward pass through TextureEncoder
+                    # During validation, we still get (projection, embedding, reconstruction)
                     outputs = self.model(inputs)
-                    loss = self.criterion(outputs, targets)
+                    
+                    # Use the same loss as in training
+                    loss = self.criterion(outputs, inputs)
                     
                     val_loss += loss.item()
             
@@ -613,89 +697,118 @@ class UNet3D(torch.nn.Module):
         return x
 
 def train_shape_model(config_path):
-    """Train the shape model using the given configuration"""
-    logger.info(f"Training shape model with config: {config_path}")
-    try:
-        # Load configuration
-        with open(config_path, 'r') as f:
-            config = yaml.safe_load(f)
-        logger.debug(f"Loaded config: {config}")
-        
-        # Create the trainer
-        trainer = CustomShapeTrainer(config)
-        
-        # Train the model
-        trainer.run()
-    except Exception as e:
-        logger.error(f"Error in train_shape_model: {str(e)}")
-        logger.error(traceback.format_exc())
-        raise
+    """
+    Train a shape model using CustomShapeTrainer.
+    
+    Args:
+        config_path (str): Path to YAML configuration file
+    """
+    logger.info(f"Loading configuration from {config_path}")
+    with open(config_path, 'r') as f:
+        config = yaml.safe_load(f)
+    
+    # Create the directory for experiments if it doesn't exist
+    os.makedirs(config['experiment_dir'], exist_ok=True)
+    
+    # Configure wandb if requested
+    if config.get('use_wandb', False):
+        wandb.init(
+            project=config.get('wandb_project', 'MorphoFeatures'),
+            config=config
+        )
+        logger.info("Initialized wandb for logging")
+    
+    # Create the trainer
+    logger.info("Creating CustomShapeTrainer")
+    trainer = CustomShapeTrainer(config)
+    
+    # Train the model
+    logger.info("Starting training")
+    trainer.fit()
+    
+    return trainer
 
 def train_texture_model(config_path, model_type='lowres'):
-    """Train the texture model using the given configuration"""
-    logger.info(f"Training {model_type} texture model with config: {config_path}")
-    try:
-        # Check if config file exists
-        if not os.path.exists(config_path):
-            logger.error(f"Config file not found: {config_path}")
-            raise FileNotFoundError(f"Config file not found: {config_path}")
-        
-        # Load configuration
-        with open(config_path, 'r') as f:
-            config = yaml.safe_load(f)
-        logger.debug(f"Loaded config: {config}")
-        
-        # Create the trainer
-        trainer = TextureModelTrainer(config, model_type)
-        
-        # Ensure experiment directory exists
-        project_dir = config.get('project_directory', f'experiments/{model_type}_texture_model')
-        os.makedirs(project_dir, exist_ok=True)
-        
-        # Save the configuration to the experiment directory
-        with open(os.path.join(project_dir, 'config.yaml'), 'w') as f:
-            yaml.dump(config, f)
-        
-        # Train the model
-        trainer.train()
-    except Exception as e:
-        logger.error(f"Error in train_texture_model: {str(e)}")
-        logger.error(traceback.format_exc())
-        raise
+    """
+    Train a texture model (low-resolution or high-resolution).
+    
+    Args:
+        config_path (str): Path to YAML configuration file
+        model_type (str): Type of texture model to train ('lowres' or 'highres')
+    """
+    logger.info(f"Loading configuration from {config_path}")
+    with open(config_path, 'r') as f:
+        config = yaml.safe_load(f)
+    
+    # Set model type in config
+    config['model_type'] = model_type
+    
+    # Create the directory for experiments if it doesn't exist
+    if 'project_directory' in config:
+        os.makedirs(config['project_directory'], exist_ok=True)
+    
+    # Train a texture model
+    logger.info(f"Creating {model_type} TextureModelTrainer")
+    trainer = TextureModelTrainer(config, model_type=model_type)
+    
+    # Train the model
+    logger.info("Starting training")
+    trainer.train()
+    
+    return trainer
 
 def main():
-    """Main entry point"""
+    """Main entry point for training the models."""
+    parser = argparse.ArgumentParser(description="Train MorphoFeatures models")
+    parser.add_argument("--shape_config", type=str, help="Path to shape model config")
+    parser.add_argument("--lowres_config", type=str, help="Path to low-res texture model config")
+    parser.add_argument("--highres_config", type=str, help="Path to high-res texture model config")
+    parser.add_argument("--logging", type=str, default="INFO", help="Logging level")
+    
+    args = parser.parse_args()
+    
+    # Setup logging
+    numeric_level = getattr(logging, args.logging.upper(), None)
+    if not isinstance(numeric_level, int):
+        raise ValueError(f"Invalid log level: {args.logging}")
+    
+    logging.basicConfig(
+        level=numeric_level,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        handlers=[
+            logging.StreamHandler(),
+            logging.FileHandler(f"morphofeatures_training_{time.strftime('%Y%m%d_%H%M%S')}.log")
+        ]
+    )
+    
+    # Train models based on provided config files
     try:
-        logger.info("Starting MorphoFeatures model training")
+        if args.shape_config:
+            logger.info(f"Training shape model with config: {args.shape_config}")
+            trainer = train_shape_model(args.shape_config)
+            logger.info("Shape model training completed.")
         
-        parser = argparse.ArgumentParser(description='Train MorphoFeatures models')
-        parser.add_argument('--model', type=str, required=True, choices=['shape', 'lowres', 'highres'],
-                            help='Type of model to train: shape, lowres (texture), or highres (texture)')
-        parser.add_argument('--config', type=str, required=True,
-                            help='Path to the configuration file')
+        if args.lowres_config:
+            logger.info(f"Training low-res texture model with config: {args.lowres_config}")
+            trainer = train_texture_model(args.lowres_config, model_type='lowres')
+            logger.info("Low-res texture model training completed.")
         
-        args = parser.parse_args()
-        logger.info(f"Parsed arguments: model={args.model}, config={args.config}")
+        if args.highres_config:
+            logger.info(f"Training high-res texture model with config: {args.highres_config}")
+            trainer = train_texture_model(args.highres_config, model_type='highres')
+            logger.info("High-res texture model training completed.")
         
-        if args.model == 'shape':
-            train_shape_model(args.config)
-        elif args.model == 'lowres':
-            train_texture_model(args.config, model_type='lowres')
-        elif args.model == 'highres':
-            train_texture_model(args.config, model_type='highres')
-        else:
-            logger.error(f"Unknown model type: {args.model}")
-            raise ValueError(f"Unknown model type: {args.model}")
+        if not (args.shape_config or args.lowres_config or args.highres_config):
+            logger.error("No configuration file provided. Please specify at least one model to train.")
+            parser.print_help()
+            return 1
+        
+        return 0
+    
     except Exception as e:
-        logger.error(f"Error in main: {str(e)}")
-        logger.error(traceback.format_exc())
-        raise
+        logger.error(f"Error training models: {e}")
+        traceback.print_exc()
+        return 1
 
-
-if __name__ == '__main__':
-    try:
-        main()
-    except Exception as e:
-        logger.error(f"Uncaught exception: {str(e)}")
-        logger.error(traceback.format_exc())
-        sys.exit(1)
+if __name__ == "__main__":
+    sys.exit(main())

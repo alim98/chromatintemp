@@ -2,7 +2,10 @@ import torch
 import numpy as np
 from torch.utils.data import DataLoader
 from dataloader.mesh_dataloader import get_mesh_dataloader_v2
+import os
+import logging
 
+logger = logging.getLogger(__name__)
 
 # Define the adapted collate function outside the main function to make it pickle-friendly
 def morphofeatures_adapted_collate_fn(original_collate_fn, batch_list):
@@ -70,8 +73,29 @@ def adapt_batch_for_morphofeatures(batch):
         # Ensure features are in shape [B, C, N]
         if len(features.shape) == 4 and features.shape[3] == 1:  # If [B, C, N, 1]
             morpho_batch['features'] = features.squeeze(-1)  # [B, C, N]
+        elif len(features.shape) == 3 and features.shape[1] != 6:  # If [B, N, C] and not already [B, C, N]
+            morpho_batch['features'] = features.transpose(1, 2)  # [B, C, N]
         else:
             morpho_batch['features'] = features
+    
+    # Additional metadata needed by morphofeatures shape model
+    if 'sample_id' in batch and 'class_id' in batch:
+        morpho_batch['metadata'] = {
+            'sample_id': batch['sample_id'],
+            'class_id': batch['class_id']
+        }
+    
+    # Verify the shapes match what MorphoFeatures expects
+    if 'points' in morpho_batch and 'features' in morpho_batch:
+        points_shape = morpho_batch['points'].shape
+        features_shape = morpho_batch['features'].shape
+        
+        if len(points_shape) == 3 and points_shape[1] == 3 and len(features_shape) == 3 and features_shape[1] == 6:
+            pass  # All good - correct format for MorphoFeatures
+        else:
+            logger.warning(f"⚠️ Data shapes may not be compatible with MorphoFeatures:")
+            logger.warning(f"  - Expected points: [B, 3, N], got {points_shape}")
+            logger.warning(f"  - Expected features: [B, 6, N], got {features_shape}")
     
     return morpho_batch
 
@@ -143,6 +167,15 @@ def get_morphofeatures_mesh_dataloader(
     Returns:
         DataLoader: Adapted dataloader for MorphoFeatures
     """
+    logger.info(f"Creating MorphoFeatures-compatible dataloader for root_dir: {root_dir}")
+    
+    # Handle cache directory if not specified
+    if cache_dir is None and root_dir is not None:
+        # Create a cache directory in the data directory if none provided
+        cache_dir = os.path.join(os.path.dirname(root_dir), "morphofeatures_cache")
+        os.makedirs(cache_dir, exist_ok=True)
+        logger.info(f"Created cache directory: {cache_dir}")
+    
     # Create the original dataloader
     dataloader = get_mesh_dataloader_v2(
         root_dir=root_dir,
@@ -163,13 +196,47 @@ def get_morphofeatures_mesh_dataloader(
         debug=debug
     )
     
+    logger.info(f"Created dataloader with {len(dataloader.dataset)} samples")
+    
     # Adapt the dataloader for MorphoFeatures
-    return adapt_mesh_dataloader_for_morphofeatures(dataloader)
+    adapted_loader = adapt_mesh_dataloader_for_morphofeatures(dataloader)
+    logger.info(f"Adapted dataloader for MorphoFeatures with {len(adapted_loader.dataset)} samples")
+    
+    # Verify structure by checking the first batch
+    try:
+        # Get a single batch
+        dataiter = iter(adapted_loader)
+        batch = next(dataiter)
+        
+        # Verify structure
+        if 'points' in batch and 'features' in batch:
+            points_shape = batch['points'].shape
+            features_shape = batch['features'].shape
+            
+            logger.info(f"Sample batch shapes:")
+            logger.info(f"  - points: {points_shape}")
+            logger.info(f"  - features: {features_shape}")
+            
+            if len(points_shape) == 3 and points_shape[1] == 3 and len(features_shape) == 3 and features_shape[1] == 6:
+                logger.info("✅ Dataloader format compatible with MorphoFeatures")
+            else:
+                logger.warning("⚠️ Dataloader format may not be compatible with MorphoFeatures")
+                logger.warning(f"  - Expected points: [B, 3, N], got {points_shape}")
+                logger.warning(f"  - Expected features: [B, 6, N], got {features_shape}")
+    except StopIteration:
+        logger.warning("⚠️ Could not verify dataloader - dataset is empty")
+    except Exception as e:
+        logger.warning(f"⚠️ Error verifying dataloader: {e}")
+    
+    return adapted_loader
 
 
 if __name__ == "__main__":
     # Example usage
     import argparse
+    import logging
+    
+    logging.basicConfig(level=logging.INFO)
     
     parser = argparse.ArgumentParser(description="Test MorphoFeatures adapter")
     parser.add_argument("--root_dir", type=str, default="data", help="Root directory for data")
@@ -206,7 +273,7 @@ if __name__ == "__main__":
         print(f"  points shape: {points_shape}")
         print(f"  features shape: {features_shape}")
         
-        if len(points_shape) == 4 and points_shape[1] == 3 and len(features_shape) == 4 and features_shape[1] == 6:
+        if len(points_shape) == 3 and points_shape[1] == 3 and len(features_shape) == 3 and features_shape[1] == 6:
             print("\n✅ Mesh dataloader is compatible with MorphoFeatures shape model!")
         else:
             print("\n❌ Mesh dataloader is NOT compatible with MorphoFeatures shape model.")

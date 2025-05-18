@@ -86,3 +86,23 @@
 2025-05-17 13:02:46.336 [info] srequest done: chatRequestId: [98316f78-b99e-430c-832b-f5d500cc7865], speculationRequestId: [ae61bca0-6a11-407a-abee-d467c3356c80]
 2025-05-17 13:02:51.046 [info] message 0 returned. finish reason: [stop]
 2025-05-17 13:02:51.046 [info] request done: requestId: [98316f78-b99e-430c-832b-f5d500cc7865] model deployment ID: []
+2025-05-17 13:09:25.473 [info] message 0 returned. finish reason: [tool_calls]
+2025-05-17 13:09:25.473 [info] request done: requestId: [41d52549-16eb-4d93-88a1-9d4c2f465069] model deployment ID: []
+2025-05-17 13:09:38.222 [info] message 0 returned. finish reason: [stop]
+2025-05-17 13:09:38.222 [info] request done: requestId: [ea91739f-1280-44c2-a6ab-2ca145d29dd9] model deployment ID: []
+2025-05-17 13:09:38.244 [info] srequest done: chatRequestId: [41d52549-16eb-4d93-88a1-9d4c2f465069], speculationRequestId: [ddbbff84-404b-4065-9424-f3fccb941e9a]
+2025-05-17 13:09:44.067 [info] message 0 returned. finish reason: [stop]
+2025-05-17 13:09:44.067 [info] request done: requestId: [41d52549-16eb-4d93-88a1-9d4c2f465069] model deployment ID: []
+2025-05-17 13:11:54.681 [info] Fetched model metadata in 1627ms 743adc2e-147e-48ce-b10f-4f448621a17a
+2025-05-17 13:12:08.792 [info] message 0 returned. finish reason: [tool_calls]
+2025-05-17 13:12:08.792 [info] request done: requestId: [df9c4883-8dc4-4b4c-b4d3-a27240c84d82] model deployment ID: []
+2025-05-17 13:12:21.997 [info] message 0 returned. finish reason: [stop]
+2025-05-17 13:12:21.997 [info] request done: requestId: [f8e042a4-21a3-47c1-b5b9-8f5d1fa2b73f] model deployment ID: []
+2025-05-17 13:12:22.006 [info] srequest done: chatRequestId: [df9c4883-8dc4-4b4c-b4d3-a27240c84d82], speculationRequestId: [a525792e-d38c-484b-8b82-e60f3954651a]
+2025-05-17 13:12:29.702 [info] message 0 returned. finish reason: [stop]
+2025-05-17 13:12:29.702 [info] request done: requestId: [df9c4883-8dc4-4b4c-b4d3-a27240c84d82] model deployment ID: []
+2025-05-17 13:29:38.671 [info] Logged in as alim98
+2025-05-17 13:29:39.347 [info] Got Copilot token for alim98
+2025-05-17 13:29:40.673 [info] Fetched model metadata in 1287ms 3df4931f-2b1d-43a3-85ec-356df14553e1
+2025-05-17 13:29:41.714 [info] copilot token chat_enabled: true, sku: free_limited_copilot
+2025-05-17 13:29:41.831 [info] BYOK: Copilot Chat known models list fetched successfully.

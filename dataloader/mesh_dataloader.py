@@ -6,6 +6,15 @@ import pandas as pd
 from torch.utils.data import Dataset, DataLoader
 import sys
 from tqdm import tqdm
+import math
+from MorphoFeatures.morphofeatures.shape.augmentations.simple_transforms import (
+    RandomCompose,
+    SymmetryTransform,
+    AnisotropicScaleTransform,
+    AxisRotationTransform
+)
+from MorphoFeatures.morphofeatures.shape.augmentations.arap import arap_warp
+import random
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import config
@@ -26,7 +35,7 @@ class MeshDataset(Dataset):
                  class_csv_path=None,
                  sample_ids=None,
                  filter_by_class=None,
-                 ignore_unclassified=True,
+                 ignore_unclassified=False,
                  precomputed_dir=None,
                  generate_on_load=True,
                  return_type='mesh',  # 'mesh', 'pointcloud', or 'both'
@@ -167,6 +176,17 @@ class MeshDataset(Dataset):
                 traceback.print_exc()
         else:
             print(f"Warning: Class CSV file not provided or not found: {class_csv_path}")
+        
+        self.apply_aug = True  # flag for point cloud augmentations
+        # Build a RandomCompose augmentation similar to paper
+        self.pc_augment = RandomCompose(
+            SymmetryTransform(),
+            AnisotropicScaleTransform(0.9, 1.1),
+            AxisRotationTransform(180, 180, 180),
+            center,
+            normalize,
+            num_compositions=2
+        )
     
     def __len__(self):
         return len(self.samples)
@@ -305,7 +325,7 @@ class MeshDataset(Dataset):
                 traceback.print_exc()
         
         # If we get here, we couldn't load or generate a point cloud
-        print(f"Could not load or generate point cloud for sample {sample_id}")
+        # print(f"Could not load or generate point cloud for sample {sample_id}")
         return torch.zeros((0, 6), dtype=torch.float32)
     
     def __getitem__(self, idx):
@@ -380,14 +400,16 @@ class MeshDataset(Dataset):
                     result['normals'] = pc[:, 3:]
                 else:
                     result['points'] = pc
-            else:  # 'both'
-                result['vertices'] = vertices
-                result['faces'] = faces
-                if pc.shape[1] == 6:  # Has normals
-                    result['points'] = pc[:, :3]
-                    result['normals'] = pc[:, 3:]
-                else:
-                    result['points'] = pc
+            
+            # Apply point-cloud augmentations if enabled
+            if self.apply_aug and pc.shape[0] > 0:
+                pts_np = pc[:, :3].numpy()
+                # simple transforms
+                pts_np = self.pc_augment(pts_np)
+                # ARAP / biharmonic warp with prob 0.3
+                if random.random() < 0.3:
+                    pts_np = arap_warp(pts_np)
+                pc[:, :3] = torch.from_numpy(pts_np)
             
             return result
             
@@ -494,7 +516,7 @@ def get_mesh_dataloader_v2(root_dir,
                            class_csv_path=None,
                            sample_ids=None,
                            filter_by_class=None,
-                           ignore_unclassified=True,
+                           ignore_unclassified=False,
                            precomputed_dir=None,
                            generate_on_load=True,
                            return_type='mesh',  # 'mesh', 'pointcloud', or 'both'

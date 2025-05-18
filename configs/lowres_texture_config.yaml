@@ -1,6 +1,6 @@
 # Configuration for training the low-resolution texture model
 project_directory: experiments/lowres_texture_model
-device: "cpu"
+device: "cuda"
 
 # Training configuration
 model_name: UNet3D
@@ -22,7 +22,7 @@ training_optimizer_kwargs:
     weight_decay: 0.00001
 
 # General training settings
-num_epochs: 1
+num_epochs: 50
 num_epochs_debug: 3  # Fewer epochs for debugging
 smoothness: 0.95
 opt_level: O1
@@ -31,7 +31,7 @@ mixed_precision: 'False'
 # Data configuration
 data_config:
   # Try using a specific sample directory as root
-  root_dir: low_res_dataset
+  root_dir: /teamspace/studios/this_studio/nuclei_sample_1a_v1
   class_csv_path: chromatin_classes_and_samples.csv  # CSV file with sample information
   is_cytoplasm: false
   box_size: [104, 104, 104]

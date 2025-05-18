@@ -1,177 +1,87 @@
-# Chromatin Analysis Project
+## we dont have Cyto labels. 
 
-This project provides tools for analyzing and classifying 3D nuclei samples using deep learning.
+Below is a “tick-sheet” that maps **your modified code-base** (everything in the `MorphoFeatures/` clone **plus** all custom folders you added) to every building-block the *MorphoFeatures* paper requires.  
 
-## Environment Setup
+Legend  
+✓ = implemented & wired correctly  
+△ = present but needs a small tweak to be 1-to-1 with the paper  
+✗ = still missing / must be added if you want a perfect replica  
 
-### Prerequisites
-- Anaconda or Miniconda installed ([Download here](https://docs.conda.io/en/latest/miniconda.html))
-- Git (for cloning this repository)
+--------------------------------------------------------------------
+1 DATA LAYER  (*paper § Pre-processing & Fig 1A left*)  
+--------------------------------------------------------------------
+| Pipeline element (paper)                       | Your code                                  | Status |
+| --------------------------------------------- | ------------------------------------------ | ------ |
+| Point-cloud loader (XYZ + normals, B×1024×6)  | `mesh_dataloader.py` → `get_mesh_dataloader_v2`<br> + adapter in `dataloader/morphofeatures_adapter.py` | ✓ |
+| Coarse-texture volume loader 144³ @ 80 nm      | `dataloader/lowres_texture_adapter.py` → `TiffVolumeDataset` (box = 104³/144³) | ✓ |
+| Fine-texture patch loader 32³ @ 20 nm          | `dataloader/highres_texture_adapter.py` → `HighResTextureDataset` | ✓ |
+| On-the-fly point-cloud aug. (rot/scale/ARAP)   | `shape/augmentations/arap.py`, `simple_transforms.py` **present** – plug-in via adapter still TODO | △ |
+| On-the-fly volume aug. (rot 90°, flip, elastic) | `utils/volume_augmentations.py` + calls in both texture adapters | ✓ |
 
-### Creating the Environment
-1. Clone this repository:
-   ```bash
-   git clone https://github.com/alim98/Chromatin
-   cd Chromatin
-   ```
+--------------------------------------------------------------------
+2 SELF-SUPERVISED OBJECTIVES  (*paper Fig 1B,C*)  
+--------------------------------------------------------------------
+| Component                                       | Your code                                                  | Status |
+| ----------------------------------------------- | ---------------------------------------------------------- | ------ |
+| NT-Xent contrastive loss (T = 0.07)             | `nn/losses.py → NTXentLoss`                                | ✓ |
+| Auto-encoder reconstruction loss (MSE)          | handled inside `MorphoFeaturesLoss` for texture branches   | ✓ |
+| λ-weighted total loss                           | `MorphoFeaturesLoss` implements \(L_{NT-Xent}+λ_{AE}·MSE+λ_{norm}\) | ✓ |
+| λ values (shape = 0, texture ≈ 1e0, norm ≈ 1e-2)| defaults 0/1/1e-2 in `get_shape_loss` / `get_texture_loss` | ✓ |
 
-2. Create the conda environment from the YAML file:
-   ```bash
-   conda env create -f environment.yml
-   ```
+--------------------------------------------------------------------
+3 NETWORKS  (*paper § “Neural-network model”*)  
+--------------------------------------------------------------------
+| Encoder (paper)                               | Your implementation                         | Out-dim | Status |
+| --------------------------------------------- | ------------------------------------------- | ------- | ------ |
+| DeepGCN (shape)                               | `shape/network/deepgcn.py` (3 GENConv)      | **80**  | △ ¹ |
+| Coarse-/Fine-texture 3-block UNet encoder      | `nn/texture_encoder.py`                     | 80      | ✓ |
+| Weight sharing (fine nucleus ← cyto)           | `TextureEncoder.transfer_weights` + `share_weights_from` in trainer | ✓ |
 
-3. Activate the environment:
-   ```bash
-   conda activate chromatin
-   ```
+¹ The paper text (Suppl.) lists 64-D for shape; the most recent repo version switched to 80-D.  
+If you must keep **exact** parity with the publication, set `out_channels=64` in `DeepGCN`.
 
-## Project Structure
-- `data/`: Contains nuclei sample data
-- `dataloader/`: Data loading utilities
-- `model/`: Neural network implementation
-- `scripts/`: Utility scripts for data processing and visualization
-- `results/`: Output directory for analysis results and visualizations
+--------------------------------------------------------------------
+4 OPTIMISATION & SCHEDULING  (*paper Methods § Training*)  
+--------------------------------------------------------------------
+| Hyper-parameter (paper)                               | Shape | Texture | Your default | Status |
+| ----------------------------------------------------- | ----- | ------- | ------------ | ------ |
+| Adam LR                                               | 2×10⁻⁴ | 1×10⁻⁴ | configurable; defaults injected if missing | ✓ |
+| Weight-decay 4×10⁻⁴                                   | ✓     | ✓       | defaulted when not given                   | ✓ |
+| Batch-size                                            | 96 clouds / 12-16 / 32 | user config | need to set in YAML | △ |
+| Stop-on-plateau (patience ≈ 0.95 epochs)              | ReduceLROnPlateau(patience=5)            | ✓ |
 
-## Usage
+--------------------------------------------------------------------
+5 TRAINING ENTRY-POINTS  (*paper “analysis/train/…” scripts*)  
+--------------------------------------------------------------------
+| Branch (paper CLI)   | Your runner                              | Writes |
+| -------------------- | ---------------------------------------- | ------ |
+| Shape                | `train_morphofeatures_models.py --shape_config …` | checkpoints & logs |
+| Coarse / Fine tex.   | same file `--lowres_config` / `--highres_config`  | checkpoints & logs |
 
-### Fine-tuning VGG3D Model
-```bash
-python scripts/finetune_vgg3d.py --data_dir data/nuclei_sample_1a_v1 --batch_size 4 --epochs 20
-```
+(single script instead of 3, but functionality identical) → ✓
 
-### Visualizing Nuclei Samples
-```bash
-python scripts/visualize_example.py --mode 2d --num_samples 5
-```
+--------------------------------------------------------------------
+6 INFERENCE & MERGE  (*paper Fig 1A right*)  
+--------------------------------------------------------------------
+| Step                                                  | Your code                                | Status |
+| ---------------------------------------------------- | ---------------------------------------- | ------ |
+| Forward six encoders; concat 480 D                   | `nn/embeddings.MorphoFeaturesExtractor`  | ✓ |
+| Zero-padding when cytoplasm missing (nucleus-only)   | implemented; keeps 480-vector shape      | ✓ |
+| Save `{id}.npy`                                      | `generate_embeddings.py`                 | ✓ |
+| MorphoContextFeatures (avg. neighbours)              | `morphofeatures/context_features.py`     | ✓ |
 
-### Creating Nuclei Index
-```bash
-python scripts/create_nuclei_index.py --data_dir data/nuclei_sample_1a_v1
-```
+--------------------------------------------------------------------
+7 WHAT IS STILL *OPTIONAL / TODO* IF YOU WANT 1-TO-1 REPRODUCTION  
+--------------------------------------------------------------------
+1. **Point-cloud augmentations not yet called** inside `mesh_dataloader` →  
+   wrap sampled point clouds with the ARAP / biharmonic transforms already in  
+   `shape/augmentations/`.  
+2. **Exact batch-sizes** from the paper must be set in your YAML configs.  
+3. **DeepGCN output dim** – switch to 64 if you want byte-identical vectors.  
+4. **Analysis notebooks / UMAP scripts** – paper figures live in `analysis/`;  
+   they’re unchanged from the upstream repo and can be used as-is.  
 
-### Working with 3D Meshes
-This project supports generating triangle meshes from nuclei mask volumes using the marching cubes algorithm.
+Everything else is now wired exactly like the *MorphoFeatures* publication.  
+If you train nucleus-only models you'll obtain vectors with the first 240 channels zero and the nucleus information in the last 240 – downstream scripts work unchanged (they’ll just see “missing” cyto features).
 
-#### Visualizing Meshes
-```bash
-python scripts/visualize_mesh.py --sample_id 1 --smooth 2
-```
-
-#### Comparing Point Clouds and Meshes
-To visualize both point cloud and mesh representations side by side:
-```bash
-python scripts/visualize_mesh.py --sample_id 1 --compare
-```
-
-#### Using Meshes in the Dataloader
-You can switch between point clouds and meshes in your code:
-```python
-from dataloader.mesh_dataloader import get_mesh_dataloader
-
-# For mesh data
-mesh_loader = get_mesh_dataloader(
-    root_dir="data/nuclei_sample_1a_v1",
-    class_csv_path="chromatin_classes_and_samples.csv",
-    use_mesh=True,  # Set to True for meshes, False for point clouds
-    smoothing_iterations=1,  # Control mesh smoothness
-    cache_dir="data/pointclouds_cache"
-)
-
-# Access the mesh data
-for batch in mesh_loader:
-    vertices = batch['vertices']  # Shape: [batch_size, max_vertices, 3]
-    faces = batch['faces']        # Shape: [batch_size, max_faces, 3]
-    vertex_masks = batch['vertex_masks']  # Masks for valid vertices
-    face_masks = batch['face_masks']      # Masks for valid faces
-    break
-```
-
-Meshes provide a more complete surface representation compared to point clouds, which can be beneficial for visualization and analysis of complex chromatin structures.
-
-# Chromatin MorphoFeatures Training
-
-This repository contains tools to train different MorphoFeatures models for chromatin analysis.
-
-## Setup
-
-1. Make sure you have the required dependencies installed:
-   ```
-   source chromatin_py311_env/bin/activate
-   ```
-
-2. For texture model training, additional dependencies are required:
-   ```bash
-   # Install inferno-pytorch
-   python -m pip install inferno-pytorch
-   
-   # Clone and install neurofire from source
-   git clone https://github.com/inferno-pytorch/neurofire.git
-   cd neurofire
-   pip install .
-   cd ..
-   ```
-   Note: If texture dependencies are not installed, the script will still run for shape models but will skip texture model training.
-
-3. Configuration files are located in the `configs` directory:
-   - `shape_config.yaml`: Configuration for the shape model
-   - `lowres_texture_config.yaml`: Configuration for the low-resolution texture model
-   - `highres_texture_config.yaml`: Configuration for the high-resolution texture model
-
-## Training Models
-
-### Train Shape Model Only
-
-To train only the shape model:
-
-```bash
-python train_morphofeatures_models.py --model shape --config configs/shape_config.yaml
-```
-
-### Train Low-Resolution Texture Model Only
-
-To train only the low-resolution texture model:
-
-```bash
-python train_morphofeatures_models.py --model lowres --config configs/lowres_texture_config.yaml
-```
-
-### Train High-Resolution Texture Model Only
-
-To train only the high-resolution texture model:
-
-```bash
-python train_morphofeatures_models.py --model highres --config configs/highres_texture_config.yaml
-```
-
-### Train All Models
-
-To train all models in sequence (shape, low-res, high-res):
-
-```bash
-python train_morphofeatures_models.py --model all --config configs
-```
-
-## Model Information
-
-### Shape Model
-The shape model uses a Deep Graph Convolutional Network (DeepGCN) to learn 3D shape features from point cloud data. It employs contrastive learning to differentiate between different chromatin structures.
-
-### Texture Models
-- **Low-resolution texture model**: A 3D UNet that learns coarse texture features from volumetric data.
-- **High-resolution texture model**: A 3D UNet with more capacity that captures fine-grained texture details.
-
-## Expected Data Format
-
-- **Shape data**: Point clouds representing mesh vertices and feature information
-- **Texture data**: 3D volumetric data representing chromatin density
-
-## Outputs
-
-Training outputs are saved in the following directories:
-- Shape model: `experiments/shape_model/`
-- Low-res texture model: `experiments/lowres_texture_model/`
-- High-res texture model: `experiments/highres_texture_model/`
-
-Each directory contains:
-- `checkpoints/`: Model weights
-- `Logs/`: Training logs and metrics (viewable with TensorBoard)
+**Bottom-line:** apart from the four TODOs above (chiefly ARAP warps and exact batch-sizes), your customised repo executes the same pipeline described in the paper.
