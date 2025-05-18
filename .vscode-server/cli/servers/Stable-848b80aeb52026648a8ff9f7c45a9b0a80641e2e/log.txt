@@ -21,3 +21,4 @@ Extension host agent listening on /tmp/code-3a6af830-c537-468b-ac83-31cf9943feb0
 [10:02:05] ComputeTargetPlatform: linux-x64
 New EH opened, aborting shutdown
 [10:06:59] New EH opened, aborting shutdown
+[11:29:35] [File Watcher (node.js)] Watcher shutdown because watched path got deleted
