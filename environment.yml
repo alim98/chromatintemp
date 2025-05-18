@@ -30,3 +30,8 @@ dependencies:
     - monai
   #   conda env create -f environment.yml
   #   conda activate chromatin
+
+  ##add these 
+  # - vedo
+  # - time
+  # tensorboard

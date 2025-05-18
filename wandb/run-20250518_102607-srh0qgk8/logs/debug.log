@@ -1,6 +1,0 @@
-2025-05-18 10:26:07,726 INFO    MainThread:26997 [wandb_init.py:setup_run_log_directory():724] Logging user logs to /teamspace/studios/this_studio/wandb/run-20250518_102607-srh0qgk8/logs/debug.log
-2025-05-18 10:26:07,726 INFO    MainThread:26997 [wandb_init.py:setup_run_log_directory():725] Logging internal logs to /teamspace/studios/this_studio/wandb/run-20250518_102607-srh0qgk8/logs/debug-internal.log
-2025-05-18 10:26:07,726 INFO    MainThread:26997 [wandb_init.py:init():852] calling init triggers
-2025-05-18 10:26:07,726 INFO    MainThread:26997 [wandb_init.py:init():857] wandb.init called with sweep_config: {}
-config: {'_wandb': {}}
-2025-05-18 10:30:11,621 INFO    MsgRouterThr:26997 [mailbox.py:close():129] [no run ID] Closing mailbox, abandoning 1 handles.

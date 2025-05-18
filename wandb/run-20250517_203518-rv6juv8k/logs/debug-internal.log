@@ -1,8 +1,0 @@
-{"time":"2025-05-17T20:35:19.025355624Z","level":"INFO","msg":"stream: starting","core version":"0.19.11","symlink path":"/teamspace/studios/this_studio/wandb/run-20250517_203518-rv6juv8k/logs/debug-core.log"}
-{"time":"2025-05-17T20:35:19.187992084Z","level":"INFO","msg":"created new stream","id":"rv6juv8k"}
-{"time":"2025-05-17T20:35:19.188041396Z","level":"INFO","msg":"stream: started","id":"rv6juv8k"}
-{"time":"2025-05-17T20:35:19.188083266Z","level":"INFO","msg":"writer: Do: started","stream_id":"rv6juv8k"}
-{"time":"2025-05-17T20:35:19.188104427Z","level":"INFO","msg":"handler: started","stream_id":"rv6juv8k"}
-{"time":"2025-05-17T20:35:19.188154558Z","level":"INFO","msg":"sender: started","stream_id":"rv6juv8k"}
-{"time":"2025-05-17T20:35:19.340673423Z","level":"INFO","msg":"Starting system monitor"}
-{"time":"2025-05-17T21:01:19.634005477Z","level":"INFO","msg":"api: retrying HTTP error","status":502,"url":"https://api.wandb.ai/files/realalimikaeili-tehran-university-of-medical-sciences/Chromatin/rv6juv8k/file_stream","body":"\n<html><head>\n<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\">\n<title>502 Server Error</title>\n</head>\n<body text=#000000 bgcolor=#ffffff>\n<h1>Error: Server Error</h1>\n<h2>The server encountered a temporary error and could not complete your request.<p>Please try again in 30 seconds.</h2>\n<h2></h2>\n</body></html>\n"}

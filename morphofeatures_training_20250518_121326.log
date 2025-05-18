@@ -1,0 +1,44 @@
+2025-05-18 12:13:26,197 [INFO] __main__: Training shape model with generated config.
+2025-05-18 12:13:26,682 [INFO] __main__: Initialized wandb for logging
+2025-05-18 12:13:26,682 [INFO] __main__: Creating CustomShapeTrainer
+2025-05-18 12:13:26,682 [INFO] dataloader.morphofeatures_adapter: Creating MorphoFeatures-compatible dataloader for root_dir: high_res_dataset2
+2025-05-18 12:13:26,689 [INFO] dataloader.morphofeatures_adapter: Created dataloader with 4 samples
+2025-05-18 12:13:26,690 [INFO] dataloader.morphofeatures_adapter: Adapted dataloader for MorphoFeatures with 4 samples
+2025-05-18 12:13:27,533 [INFO] dataloader.morphofeatures_adapter: Sample batch shapes:
+2025-05-18 12:13:27,533 [INFO] dataloader.morphofeatures_adapter:   - points: torch.Size([4, 3, 1024])
+2025-05-18 12:13:27,534 [INFO] dataloader.morphofeatures_adapter:   - features: torch.Size([4, 6, 1024])
+2025-05-18 12:13:27,534 [INFO] dataloader.morphofeatures_adapter: ✅ Dataloader format compatible with MorphoFeatures
+2025-05-18 12:13:27,558 [INFO] dataloader.morphofeatures_adapter: Creating MorphoFeatures-compatible dataloader for root_dir: high_res_dataset2
+2025-05-18 12:13:27,562 [INFO] dataloader.morphofeatures_adapter: Created dataloader with 4 samples
+2025-05-18 12:13:27,562 [INFO] dataloader.morphofeatures_adapter: Adapted dataloader for MorphoFeatures with 4 samples
+2025-05-18 12:13:28,337 [INFO] dataloader.morphofeatures_adapter: Sample batch shapes:
+2025-05-18 12:13:28,337 [INFO] dataloader.morphofeatures_adapter:   - points: torch.Size([4, 3, 1024])
+2025-05-18 12:13:28,338 [INFO] dataloader.morphofeatures_adapter:   - features: torch.Size([4, 6, 1024])
+2025-05-18 12:13:28,338 [INFO] dataloader.morphofeatures_adapter: ✅ Dataloader format compatible with MorphoFeatures
+2025-05-18 12:13:28,358 [INFO] __main__: Train dataset size: 4
+2025-05-18 12:13:28,358 [INFO] __main__: Validation dataset size: 4
+2025-05-18 12:13:29,207 [INFO] __main__: Starting training
+2025-05-18 12:13:29,207 [INFO] __main__: Starting model training via fit()...
+2025-05-18 12:13:29,575 [INFO] __main__: Epoch 0 → avg validation loss: 0.000000
+2025-05-18 12:13:29,597 [INFO] __main__: New best validation loss: 0.000000
+2025-05-18 12:13:29,907 [INFO] __main__: Epoch 0 → avg train loss: 0.542503
+2025-05-18 12:13:30,072 [INFO] __main__: Epoch 0 → avg validation loss: 0.000000
+2025-05-18 12:13:30,311 [INFO] __main__: Epoch 1 → avg train loss: 0.106357
+2025-05-18 12:13:30,445 [INFO] __main__: Epoch 1 → avg validation loss: 0.553597
+2025-05-18 12:13:30,645 [INFO] __main__: Epoch 2 → avg train loss: 0.103122
+2025-05-18 12:13:30,768 [INFO] __main__: Epoch 2 → avg validation loss: 0.854676
+2025-05-18 12:13:30,978 [INFO] __main__: Epoch 3 → avg train loss: 0.940259
+2025-05-18 12:13:31,117 [INFO] __main__: Epoch 3 → avg validation loss: 0.000000
+2025-05-18 12:13:31,331 [INFO] __main__: Epoch 4 → avg train loss: 0.973455
+2025-05-18 12:13:31,463 [INFO] __main__: Epoch 4 → avg validation loss: 0.000000
+2025-05-18 12:13:31,675 [INFO] __main__: Epoch 5 → avg train loss: 0.647917
+2025-05-18 12:13:31,813 [INFO] __main__: Epoch 5 → avg validation loss: 0.842259
+2025-05-18 12:13:32,024 [INFO] __main__: Epoch 6 → avg train loss: 0.980036
+2025-05-18 12:13:32,146 [INFO] __main__: Epoch 6 → avg validation loss: 0.898724
+2025-05-18 12:13:32,346 [INFO] __main__: Epoch 7 → avg train loss: 0.659322
+2025-05-18 12:13:32,475 [INFO] __main__: Epoch 7 → avg validation loss: 0.000000
+2025-05-18 12:13:32,676 [INFO] __main__: Epoch 8 → avg train loss: 0.122085
+2025-05-18 12:13:32,840 [INFO] __main__: Epoch 8 → avg validation loss: 0.846893
+2025-05-18 12:13:33,057 [INFO] __main__: Epoch 9 → avg train loss: 0.837447
+2025-05-18 12:13:33,192 [INFO] __main__: Epoch 9 → avg validation loss: 0.762488
+2025-05-18 12:13:33,677 [INFO] __main__: Shape model training completed.

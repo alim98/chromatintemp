@@ -760,10 +760,23 @@ def train_texture_model(config_path, model_type='lowres'):
 def main():
     """Main entry point for training the models."""
     parser = argparse.ArgumentParser(description="Train MorphoFeatures models")
+    # Original config-based arguments
     parser.add_argument("--shape_config", type=str, help="Path to shape model config")
     parser.add_argument("--lowres_config", type=str, help="Path to low-res texture model config")
     parser.add_argument("--highres_config", type=str, help="Path to high-res texture model config")
     parser.add_argument("--logging", type=str, default="INFO", help="Logging level")
+    
+    # New command-line arguments used in run_full_pipeline.sh
+    parser.add_argument("--data-root", type=str, help="Root directory containing data samples")
+    parser.add_argument("--low-res-dir", type=str, help="Directory with low-resolution data")
+    parser.add_argument("--output-dir", type=str, help="Output directory for results")
+    parser.add_argument("--model-type", type=str, choices=["shape", "nucleus"], help="Model type to train")
+    parser.add_argument("--batch-size", type=int, help="Batch size for training")
+    parser.add_argument("--num-workers", type=int, help="Number of data loader workers")
+    parser.add_argument("--epochs", type=int, help="Number of training epochs")
+    parser.add_argument("--gpu-id", type=int, help="GPU ID to use")
+    parser.add_argument("--precomputed-dir", type=str, help="Directory for precomputed/cached meshes")
+    parser.add_argument("--use-wandb", action="store_true", help="Enable Weights & Biases logging")
     
     args = parser.parse_args()
     
@@ -781,34 +794,148 @@ def main():
         ]
     )
     
-    # Train models based on provided config files
-    try:
-        if args.shape_config:
-            logger.info(f"Training shape model with config: {args.shape_config}")
-            trainer = train_shape_model(args.shape_config)
-            logger.info("Shape model training completed.")
-        
-        if args.lowres_config:
-            logger.info(f"Training low-res texture model with config: {args.lowres_config}")
-            trainer = train_texture_model(args.lowres_config, model_type='lowres')
-            logger.info("Low-res texture model training completed.")
-        
-        if args.highres_config:
-            logger.info(f"Training high-res texture model with config: {args.highres_config}")
-            trainer = train_texture_model(args.highres_config, model_type='highres')
-            logger.info("High-res texture model training completed.")
-        
-        if not (args.shape_config or args.lowres_config or args.highres_config):
-            logger.error("No configuration file provided. Please specify at least one model to train.")
+    # If command-line arguments are provided, create a config from them
+    if args.data_root or args.model_type:
+        # Check if we have all the required arguments
+        if not (args.data_root and args.output_dir and args.model_type):
+            logger.error("When using command-line arguments, --data-root, --output-dir, and --model-type are required.")
             parser.print_help()
             return 1
         
-        return 0
+        # Create a config based on command-line arguments
+        if args.model_type == "shape":
+            # Create shape model config
+            config = {
+                "experiment_dir": os.path.join(args.output_dir, "shape_model"),
+                "device": f"cuda:{args.gpu_id}" if args.gpu_id is not None else "cpu",
+                "data": {
+                    "root_dir": args.data_root,
+                    "class_csv_path": "chromatin_classes_and_samples.csv",
+                    "num_points": 1024,
+                    "cache_dir": args.precomputed_dir,
+                    "precomputed_dir": args.precomputed_dir
+                },
+                "loader": {
+                    "batch_size": args.batch_size or 8,
+                    "shuffle": True,
+                    "num_workers": args.num_workers or 4
+                },
+                "model": {
+                    "name": "DeepGCN",
+                    "kwargs": {
+                        "in_channels": 6,
+                        "channels": 64,
+                        "out_channels": 64,
+                        "k": 12,
+                        "norm": "batch",
+                        "act": "relu",
+                        "n_blocks": 14,
+                        "projection_head": True,
+                        "use_dilation": True
+                    }
+                },
+                "optimizer": {
+                    "name": "Adam",
+                    "kwargs": {
+                        "lr": 0.001,
+                        "weight_decay": 0.0001
+                    }
+                },
+                "criterion": {
+                    "name": "ContrastiveLoss",
+                    "kwargs": {
+                        "pos_margin": 0,
+                        "neg_margin": 1,
+                        "distance": {
+                            "function": "CosineSimilarity"
+                        }
+                    }
+                },
+                "training": {
+                    "validate_every": 1,
+                    "epochs": args.epochs or 50,
+                    "checkpoint_every": 1
+                },
+                "scheduler": {
+                    "step_size": 15,
+                    "gamma": 0.5
+                },
+                "use_wandb": args.use_wandb,
+                "wandb_project": "Chromatin",
+                "wandb_run_name": "shape_model_training",
+                "output": {
+                    "checkpoint_dir": os.path.join(args.output_dir, "shape_model/checkpoints"),
+                    "log_dir": os.path.join(args.output_dir, "shape_model/logs"),
+                    "save_every": 5
+                }
+            }
+            
+            logger.info("Training shape model with generated config.")
+            trainer = train_shape_model_from_config(config)
+            logger.info("Shape model training completed.")
+        
+        elif args.model_type == "nucleus":
+            # TODO: Implement nucleus model training with command-line arguments
+            logger.error("Nucleus model training from command line is not implemented yet. Please use a config file.")
+            return 1
     
-    except Exception as e:
-        logger.error(f"Error training models: {e}")
-        traceback.print_exc()
-        return 1
+    # Train models based on provided config files (original approach)
+    else:
+        try:
+            if args.shape_config:
+                logger.info(f"Training shape model with config: {args.shape_config}")
+                trainer = train_shape_model(args.shape_config)
+                logger.info("Shape model training completed.")
+            
+            if args.lowres_config:
+                logger.info(f"Training low-res texture model with config: {args.lowres_config}")
+                trainer = train_texture_model(args.lowres_config, model_type='lowres')
+                logger.info("Low-res texture model training completed.")
+            
+            if args.highres_config:
+                logger.info(f"Training high-res texture model with config: {args.highres_config}")
+                trainer = train_texture_model(args.highres_config, model_type='highres')
+                logger.info("High-res texture model training completed.")
+            
+            if not (args.shape_config or args.lowres_config or args.highres_config):
+                logger.error("No configuration file provided. Please specify at least one model to train.")
+                parser.print_help()
+                return 1
+        
+        except Exception as e:
+            logger.error(f"Error training models: {e}")
+            traceback.print_exc()
+            return 1
+    
+    return 0
+
+def train_shape_model_from_config(config):
+    """
+    Train a shape model using CustomShapeTrainer directly from a config dictionary.
+    
+    Args:
+        config (dict): Configuration dictionary
+    """
+    # Create the directory for experiments if it doesn't exist
+    os.makedirs(config['experiment_dir'], exist_ok=True)
+    
+    # Configure wandb if requested
+    if config.get('use_wandb', False):
+        wandb.init(
+            project=config.get('wandb_project', 'MorphoFeatures'),
+            config=config
+        )
+        logger.info("Initialized wandb for logging")
+    
+    # Create the trainer
+    logger.info("Creating CustomShapeTrainer")
+    trainer = CustomShapeTrainer(config)
+    
+    # Train the model
+    logger.info("Starting training")
+    trainer.fit()
+    
+    return trainer
 
 if __name__ == "__main__":
     sys.exit(main())

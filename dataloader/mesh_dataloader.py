@@ -11,7 +11,9 @@ from MorphoFeatures.morphofeatures.shape.augmentations.simple_transforms import 
     RandomCompose,
     SymmetryTransform,
     AnisotropicScaleTransform,
-    AxisRotationTransform
+    AxisRotationTransform,
+    center,
+    normalize
 )
 from MorphoFeatures.morphofeatures.shape.augmentations.arap import arap_warp
 import random

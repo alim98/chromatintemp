@@ -1,0 +1,4 @@
+2025-05-18 12:09:28,327 [INFO] __main__: Training shape model with generated config.
+2025-05-18 12:09:28,858 [INFO] __main__: Initialized wandb for logging
+2025-05-18 12:09:28,858 [INFO] __main__: Creating CustomShapeTrainer
+2025-05-18 12:09:28,859 [INFO] dataloader.morphofeatures_adapter: Creating MorphoFeatures-compatible dataloader for root_dir: high_res_dataset2
