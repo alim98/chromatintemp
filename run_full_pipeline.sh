@@ -21,7 +21,7 @@ OUTPUT_DIR="results/morphofeatures"
 BATCH_SIZE=8
 NUM_WORKERS=4
 EPOCHS=1
-MODEL_TYPE="all"  # Options: nucleus, texture, shape, all
+MODEL_TYPE="all"  # Options: nucleus, texture-lowres, texture-highres, shape, all
 GPU_ID=0
 PRECOMPUTED_DIR="data/mesh_cache"
 USE_WANDB=true
@@ -88,7 +88,7 @@ while [[ $# -gt 0 ]]; do
             echo "  --batch-size N         Batch size for training (default: $BATCH_SIZE)"
             echo "  --num-workers N        Number of data loader workers (default: $NUM_WORKERS)"
             echo "  --epochs N             Number of training epochs (default: $EPOCHS)"
-            echo "  --model-type TYPE      Model type to train - nucleus, texture, shape, all (default: $MODEL_TYPE)"
+            echo "  --model-type TYPE      Model type to train - nucleus, texture-lowres, texture-highres, shape, all (default: $MODEL_TYPE)"
             echo "  --gpu-id ID            GPU ID to use (default: $GPU_ID)"
             echo "  --precomputed-dir DIR  Directory for precomputed/cached meshes (default: $PRECOMPUTED_DIR)"
             echo "  --no-wandb             Disable Weights & Biases logging"
@@ -143,10 +143,28 @@ fi
 case $MODEL_TYPE in
     nucleus)
         echo "WARNING: Nucleus model training from command line is not implemented."
-        echo "Consider using 'shape' or 'texture' model types, or 'all' for both."
+        echo "Consider using 'shape' or 'texture-lowres', 'texture-highres', or 'all' for all models."
         exit 1
         ;;
+    texture-lowres)
+        python train_texture_with_morphofeatures.py \
+            --project_dir "$OUTPUT_DIR" \
+            --texture_type "coarse" \
+            --config "configs/lowres_texture_config.yaml" \
+            --devices "$GPU_ID" \
+            --from_checkpoint 0
+        ;;
+    texture-highres)
+        python train_texture_with_morphofeatures.py \
+            --project_dir "$OUTPUT_DIR" \
+            --texture_type "fine" \
+            --config "configs/highres_texture_config.yaml" \
+            --devices "$GPU_ID" \
+            --from_checkpoint 0
+        ;;
     texture)
+        echo "Please specify texture resolution: texture-lowres or texture-highres"
+        echo "Falling back to texture-lowres..."
         python train_texture_with_morphofeatures.py \
             --project_dir "$OUTPUT_DIR" \
             --texture_type "coarse" \
@@ -181,17 +199,25 @@ case $MODEL_TYPE in
             --precomputed-dir "$PRECOMPUTED_DIR" \
             $WANDB_FLAG
             
-        # Then train texture model
+        # Then train low-res texture model
         python train_texture_with_morphofeatures.py \
             --project_dir "$OUTPUT_DIR" \
             --texture_type "coarse" \
             --config "configs/lowres_texture_config.yaml" \
             --devices "$GPU_ID" \
             --from_checkpoint 0
+            
+        # Finally train high-res texture model
+        python train_texture_with_morphofeatures.py \
+            --project_dir "$OUTPUT_DIR" \
+            --texture_type "fine" \
+            --config "configs/highres_texture_config.yaml" \
+            --devices "$GPU_ID" \
+            --from_checkpoint 0
         ;;
     *)
         echo "Unknown model type: $MODEL_TYPE"
-        echo "Valid options: nucleus, texture, shape, all"
+        echo "Valid options: nucleus, texture-lowres, texture-highres, shape, all"
         exit 1
         ;;
 esac
