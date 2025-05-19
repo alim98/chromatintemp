@@ -52,10 +52,24 @@ class TextureNet(pl.LightningModule):
             out_channels=1
         )
         
-        # Loss functions
-        self.criterion_con = NTXentLoss(temperature=cfg.get('temperature', 0.1))
-        self.criterion_rec = nn.MSELoss()
-        self.lambda_rec = cfg.get('lambda_rec', 1.0)
+        # Get loss configuration
+        loss_config = cfg.get('loss_config', {})
+        
+        # Use the MorphoFeaturesLoss if configured
+        if loss_config.get('type', '') == 'morphofeatures':
+            self.criterion = MorphoFeaturesLoss(
+                temperature=loss_config.get('temperature', 0.1),
+                lambda_ae=loss_config.get('lambda_ae', 1.0),
+                lambda_norm=loss_config.get('lambda_norm', 0.01),
+                batch_size=None  # Will be inferred from input
+            )
+            self.use_combined_loss = True
+        else:
+            # Fallback to separate losses
+            self.criterion_con = NTXentLoss(temperature=cfg.get('temperature', 0.1))
+            self.criterion_rec = nn.MSELoss()
+            self.lambda_rec = cfg.get('lambda_rec', 1.0)
+            self.use_combined_loss = False
 
     # ───────────────────────── Lightning API ──────────────────────────
     def forward(self, x, just_encode=False):
@@ -70,7 +84,8 @@ class TextureNet(pl.LightningModule):
             Otherwise: (embeddings, reconstructed volume)
         """
         # Encode and global average pool
-        z = self.encoder(x).mean(dim=(-1, -2, -3))  # global-avg-pool to (B, feature_dim)
+        features = self.encoder(x)
+        z = features.mean(dim=(-1, -2, -3))  # global-avg-pool to (B, feature_dim)
         
         if just_encode:  # inference mode used by predict.py
             return z
@@ -101,21 +116,35 @@ class TextureNet(pl.LightningModule):
         z1, rec1 = self(aug1)
         z2, rec2 = self(aug2)
         
-        # Compute contrastive loss between embeddings
-        con_loss = self.criterion_con(z1, z2)
-        
-        # Compute reconstruction losses
-        rec_loss1 = self.criterion_rec(rec1, target1)
-        rec_loss2 = self.criterion_rec(rec2, target2)
-        rec_loss = (rec_loss1 + rec_loss2) / 2
-        
-        # Compute combined loss
-        loss = con_loss + self.lambda_rec * rec_loss
-        
-        # Log losses
-        self.log("train_loss", loss, prog_bar=True)
-        self.log("train_con_loss", con_loss, prog_bar=False)
-        self.log("train_rec_loss", rec_loss, prog_bar=False)
+        if self.use_combined_loss:
+            # Create positive pairs for contrastive learning
+            # This is key for proper NT-Xent loss calculation
+            z_combined = torch.cat([z1, z2], dim=0)  # Stack embeddings to create positive pairs
+            
+            # Use the MorphoFeaturesLoss
+            # Note: passing z_combined for both projection and embedding since NT-Xent will split it
+            # and treat the corresponding parts as positive pairs
+            loss = self.criterion((z_combined, z_combined, torch.cat([rec1, rec2], dim=0)), 
+                                  torch.cat([target1, target2], dim=0))
+            
+            # Log loss
+            self.log("train_loss", loss, prog_bar=True)
+        else:
+            # Compute contrastive loss between embeddings
+            con_loss = self.criterion_con(z1, z2)  # Directly use z1 and z2 as positive pairs
+            
+            # Compute reconstruction losses
+            rec_loss1 = self.criterion_rec(rec1, target1)
+            rec_loss2 = self.criterion_rec(rec2, target2)
+            rec_loss = (rec_loss1 + rec_loss2) / 2
+            
+            # Compute combined loss
+            loss = con_loss + self.lambda_rec * rec_loss
+            
+            # Log losses
+            self.log("train_loss", loss, prog_bar=True)
+            self.log("train_con_loss", con_loss, prog_bar=False)
+            self.log("train_rec_loss", rec_loss, prog_bar=False)
         
         return loss
         
@@ -133,21 +162,32 @@ class TextureNet(pl.LightningModule):
         z1, rec1 = self(aug1)
         z2, rec2 = self(aug2)
         
-        # Compute contrastive loss between embeddings
-        con_loss = self.criterion_con(z1, z2)
-        
-        # Compute reconstruction losses
-        rec_loss1 = self.criterion_rec(rec1, target1)
-        rec_loss2 = self.criterion_rec(rec2, target2)
-        rec_loss = (rec_loss1 + rec_loss2) / 2
-        
-        # Compute combined loss
-        loss = con_loss + self.lambda_rec * rec_loss
-        
-        # Log losses
-        self.log("val_loss", loss, prog_bar=True)
-        self.log("val_con_loss", con_loss, prog_bar=False)
-        self.log("val_rec_loss", rec_loss, prog_bar=False)
+        if self.use_combined_loss:
+            # Create positive pairs for contrastive learning
+            z_combined = torch.cat([z1, z2], dim=0)
+            
+            # Use the MorphoFeaturesLoss with properly arranged positive pairs
+            loss = self.criterion((z_combined, z_combined, torch.cat([rec1, rec2], dim=0)), 
+                                  torch.cat([target1, target2], dim=0))
+            
+            # Log loss
+            self.log("val_loss", loss, prog_bar=True)
+        else:
+            # Compute contrastive loss between embeddings
+            con_loss = self.criterion_con(z1, z2)  # z1 and z2 are positive pairs
+            
+            # Compute reconstruction losses
+            rec_loss1 = self.criterion_rec(rec1, target1)
+            rec_loss2 = self.criterion_rec(rec2, target2)
+            rec_loss = (rec_loss1 + rec_loss2) / 2
+            
+            # Compute combined loss
+            loss = con_loss + self.lambda_rec * rec_loss
+            
+            # Log losses
+            self.log("val_loss", loss, prog_bar=True)
+            self.log("val_con_loss", con_loss, prog_bar=False)
+            self.log("val_rec_loss", rec_loss, prog_bar=False)
         
         return loss
 

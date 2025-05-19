@@ -315,6 +315,13 @@ class TextureModelTrainer:
         if 'f_maps' in self.config.get('model_kwargs', {}):
             model_config['feature_dim'] = self.config.get('model_kwargs', {}).get('out_channels', 80)
         
+        # Extract loss configuration parameters
+        loss_config = self.config.get('loss_config', {})
+        lambda_nt_xent = self.config.get('lambda_nt_xent', 1.0)
+        lambda_mse = self.config.get('lambda_mse', 0.5)
+        lambda_reg = self.config.get('lambda_reg', 0.1)
+        temperature = self.config.get('temperature', 0.1)
+        
         # Create a copy of the config with updated format for Lightning
         lightning_config = {
             'model_config': model_config,
@@ -327,13 +334,20 @@ class TextureModelTrainer:
                 'factor': 0.95,
                 'patience': 5
             },
-            'lambda_rec': self.config.get('lambda_rec', 1.0),
-            'temperature': self.config.get('temperature', 0.1)
+            # Loss configuration for NT-Xent + MSE + regularization
+            'loss_config': {
+                'type': 'morphofeatures',
+                'temperature': temperature,
+                'lambda_ae': lambda_mse,
+                'lambda_norm': lambda_reg
+            },
+            'temperature': temperature,
+            'lambda_rec': lambda_mse
         }
         
         # Create Lightning model
         self.model = TextureNet(lightning_config)
-        logger.info("Created TextureNet Lightning model")
+        logger.info(f"Created TextureNet Lightning model with MorphoFeaturesLoss (NT-Xent={lambda_nt_xent}, MSE={lambda_mse}, Reg={lambda_reg})")
         
         # Create Trainer
         self.trainer = None  # Will be created after dataloaders are set up
@@ -662,6 +676,48 @@ def train_texture_model(config_path, model_type='lowres'):
     
     return trainer
 
+def train_texture_model_from_config(config, model_type='lowres'):
+    """
+    Train a texture model using TextureModelTrainer directly from a config dictionary.
+    
+    Args:
+        config (dict): Configuration dictionary
+        model_type (str): Type of texture model to train ('lowres' or 'highres')
+    """
+    # Set model type in config
+    config['model_type'] = model_type
+    
+    # Create the directory for experiments if it doesn't exist
+    if 'project_directory' in config:
+        os.makedirs(config['project_directory'], exist_ok=True)
+    
+    # Configure wandb if requested
+    if config.get('use_wandb', False):
+        try:
+            import wandb
+            if not wandb.api.api_key:
+                wandb.login(key="9de783cdb1f22a4b8f97f7e05e4e057f668e0cfe")
+            
+            run = wandb.init(
+                project=config.get('wandb_project', 'MorphoFeatures'),
+                config=config,
+                dir=os.environ.get("WANDB_DIR", None)
+            )
+            logger.info("Initialized wandb for texture model logging")
+        except Exception as e:
+            logger.error(f"Failed to initialize wandb for texture model: {e}")
+            config['use_wandb'] = False
+    
+    # Train a texture model using Lightning
+    logger.info(f"Creating {model_type} TextureModelTrainer with Lightning")
+    trainer = TextureModelTrainer(config, model_type=model_type)
+    
+    # Train the model
+    logger.info("Starting training")
+    trainer.train()
+    
+    return trainer
+
 def main():
     """Main entry point for training the models."""
     parser = argparse.ArgumentParser(description="Train MorphoFeatures models")
@@ -682,6 +738,12 @@ def main():
     parser.add_argument("--gpu-id", type=int, help="GPU ID to use")
     parser.add_argument("--precomputed-dir", type=str, help="Directory for precomputed/cached meshes")
     parser.add_argument("--use-wandb", action="store_true", help="Enable Weights & Biases logging")
+    
+    # New loss function parameters
+    parser.add_argument("--lambda-nt-xent", type=float, default=1.0, help="Weight for NT-Xent loss")
+    parser.add_argument("--lambda-mse", type=float, default=0.5, help="Weight for MSE loss")
+    parser.add_argument("--lambda-reg", type=float, default=0.1, help="Weight for regularization loss")
+    parser.add_argument("--temperature", type=float, default=0.1, help="Temperature parameter for NT-Xent loss")
     
     args = parser.parse_args()
     
@@ -803,9 +865,54 @@ def main():
             logger.info("Shape model training completed.")
         
         elif args.model_type == "nucleus":
-            # TODO: Implement nucleus model training with command-line arguments
-            logger.error("Nucleus model training from command line is not implemented yet. Please use a config file.")
-            return 1
+            # Create nucleus texture model config
+            config = {
+                "project_directory": os.path.join(args.output_dir, "nucleus_texture_model"),
+                "device": device,
+                "data_config": {
+                    "root_dir": args.data_root,
+                    "class_csv_path": os.path.join(args.data_root, "chromatin_classes_and_samples.csv"),
+                    "box_size": (104, 104, 104),
+                    "is_cytoplasm": False,
+                    "input_dir": "raw",
+                    "target_dir": "mask"
+                },
+                "loader_config": {
+                    "batch_size": args.batch_size or 4,
+                    "shuffle": True,
+                    "num_workers": args.num_workers or 4
+                },
+                "val_loader_config": {
+                    "batch_size": args.batch_size or 4,
+                    "shuffle": False,
+                    "num_workers": args.num_workers or 4
+                },
+                "model_config": {
+                    "feature_dim": 64,
+                    "in_channels": 1,
+                    "out_channels": 1,
+                    "f_maps": [32, 64, 128, 256]
+                },
+                "training_optimizer_kwargs": {
+                    "optimizer_kwargs": {
+                        "lr": 0.0001,
+                        "weight_decay": 0.0001
+                    }
+                },
+                "num_epochs": args.epochs or 50,
+                "use_wandb": args.use_wandb,
+                "wandb_project": "Chromatin",
+                "wandb_run_name": "nucleus_texture_model_training",
+                # Loss function parameters
+                "lambda_nt_xent": args.lambda_nt_xent,
+                "lambda_mse": args.lambda_mse,
+                "lambda_reg": args.lambda_reg,
+                "temperature": args.temperature
+            }
+            
+            logger.info("Training nucleus texture model with generated config.")
+            trainer = train_texture_model_from_config(config, model_type='highres')
+            logger.info("Nucleus texture model training completed.")
     
     # Train models based on provided config files (original approach)
     else:

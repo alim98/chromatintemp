@@ -38,32 +38,35 @@ class NTXentLoss(nn.Module):
         z_j = F.normalize(z_j, dim=1)
         
         # Concatenate embeddings from the two views
-        representations = torch.cat([z_i, z_j], dim=0)
+        representations = torch.cat([z_i, z_j], dim=0)  # shape: [2*batch_size, embedding_dim]
         
         # Compute similarity matrix
-        similarity_matrix = torch.exp(torch.mm(representations, representations.t()) / self.temperature)
+        # sim[i,j] = cosine similarity between representations[i] and representations[j]
+        sim_matrix = torch.mm(representations, representations.t()) / self.temperature  # [2*batch_size, 2*batch_size]
         
-        # Mask out self-similarity
+        # Mask out self-similarity (diagonal elements)
         mask = ~torch.eye(2 * batch_size, dtype=bool, device=z_i.device)
-        similarity_matrix = similarity_matrix.masked_select(mask).view(2 * batch_size, -1)
         
-        # Create positive pair mask (augmented pairs should be similar)
-        pos_mask = torch.zeros((2 * batch_size, 2 * batch_size - 1), dtype=bool, device=z_i.device)
-        pos_mask[:batch_size, batch_size-1:2*batch_size-1] = torch.eye(batch_size, device=z_i.device)
-        pos_mask[batch_size:, :batch_size] = torch.eye(batch_size, device=z_i.device)
+        # Fill diagonal with large negative value (will become ~0 after exp)
+        sim_matrix = sim_matrix.masked_fill(~mask, -9e15)
         
-        # Extract positive and negatives
-        positives = similarity_matrix.masked_select(pos_mask).view(2 * batch_size, 1)
-        negatives = similarity_matrix.masked_select(~pos_mask).view(2 * batch_size, -1)
+        # Create labels that identify where the positive pairs are
+        # For each i, the positive pair is at i+batch_size (mod 2*batch_size)
+        pos_idx = torch.arange(2 * batch_size, device=z_i.device)
+        pos_idx = torch.roll(pos_idx, batch_size)  # Creates [batch_size, batch_size+1, ..., 2*batch_size-1, 0, 1, ..., batch_size-1]
         
-        # Concatenate positive with negatives for log softmax calculation
-        logits = torch.cat([positives, negatives], dim=1)
+        # Calculate the NT-Xent loss
+        # For each i, we compute:
+        # -log( exp(sim[i,pos_idx[i]]) / sum_j(exp(sim[i,j])) )
         
-        # Create labels (positive is always at index 0)
-        labels = torch.zeros(2 * batch_size, dtype=torch.long, device=z_i.device)
+        # Compute log softmax along rows
+        log_prob = F.log_softmax(sim_matrix, dim=1)
         
-        # Calculate cross entropy loss
-        return self.criterion(logits, labels)
+        # Select the values for positive pairs
+        # This will compute: -log(exp(sim[i,pos_idx[i]]) / sum_j(exp(sim[i,j])))
+        loss = -torch.mean(torch.gather(log_prob, 1, pos_idx.unsqueeze(1)))
+        
+        return loss
 
 
 class MorphoFeaturesLoss(nn.Module):
@@ -101,7 +104,8 @@ class MorphoFeaturesLoss(nn.Module):
             if isinstance(target, (list, tuple)):
                 target = target[0]
                 
-            # Contrastive loss
+            # Contrastive loss using NT-Xent
+            # Note: projection already contains stacked positive pairs from augmented views
             contrastive = self.contrastive_loss(projection)
             
             # Reconstruction loss (autoencoder)
@@ -110,20 +114,22 @@ class MorphoFeaturesLoss(nn.Module):
             else:
                 reconstruction_loss = torch.tensor(0.0, device=projection.device)
             
-            # L2 norm regularization
+            # L2 norm regularization on embeddings
             norm_loss = torch.norm(embedding, p=2, dim=1).mean()
             
-            # Combined loss
-            return contrastive + self.lambda_ae * reconstruction_loss + self.lambda_norm * norm_loss
+            # Combined loss with weighted terms
+            total_loss = contrastive + self.lambda_ae * reconstruction_loss + self.lambda_norm * norm_loss
+            
+            return total_loss
             
         else:
             # Shape branch (projection, embedding) - contrastive only
             projection, embedding = output
             
-            # Contrastive loss
+            # Contrastive loss using NT-Xent
             contrastive = self.contrastive_loss(projection)
             
-            # L2 norm regularization (still keep this term)
+            # L2 norm regularization (still keep this term for stability)
             norm_loss = torch.norm(embedding, p=2, dim=1).mean()
             
             return contrastive + self.lambda_norm * norm_loss
