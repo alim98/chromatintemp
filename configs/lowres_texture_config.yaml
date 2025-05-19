@@ -31,7 +31,7 @@ mixed_precision: 'False'
 # Data configuration
 data_config:
   # Try using a specific sample directory as root
-  root_dir: /teamspace/studios/this_studio/nuclei_sample_1a_v1
+  root_dir: low_res_dataset
   class_csv_path: chromatin_classes_and_samples.csv  # CSV file with sample information
   is_cytoplasm: false
   box_size: [104, 104, 104]

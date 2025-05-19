@@ -472,19 +472,93 @@ class TextureModelTrainer:
             pl.callbacks.LearningRateMonitor(logging_interval='epoch')
         ]
         
+        # Add detailed loss logging callback
+        class DetailedLossLogger(pl.Callback):
+            def __init__(self, use_wandb=False):
+                super().__init__()
+                self.use_wandb = use_wandb
+                
+            def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+                # Log component losses if they're available in the output
+                if isinstance(outputs, dict) and 'loss_components' in outputs:
+                    components = outputs['loss_components']
+                    for name, value in components.items():
+                        # Log to progress bar for important components
+                        if name in ['nt_xent', 'recon', 'reg']:
+                            trainer.logger.log_metrics({f"train/loss_{name}": value}, step=trainer.global_step)
+                        
+                        # Log to wandb if enabled
+                        if self.use_wandb:
+                            try:
+                                import wandb
+                                wandb.log({f"train/loss_{name}": value}, step=trainer.global_step)
+                            except Exception as e:
+                                pass
+            
+            def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+                # Log component losses if they're available in the output
+                if isinstance(outputs, dict) and 'loss_components' in outputs:
+                    components = outputs['loss_components']
+                    for name, value in components.items():
+                        # Log to progress bar for important components
+                        if name in ['nt_xent', 'recon', 'reg']:
+                            trainer.logger.log_metrics({f"val/loss_{name}": value}, step=trainer.global_step)
+                        
+                        # Log to wandb if enabled
+                        if self.use_wandb:
+                            try:
+                                import wandb
+                                wandb.log({f"val/loss_{name}": value}, step=trainer.global_step)
+                            except Exception as e:
+                                pass
+        
+        # Add the detailed loss logger
+        detailed_loss_logger = DetailedLossLogger(use_wandb=self.config.get('use_wandb', False))
+        callbacks.append(detailed_loss_logger)
+        
         # Configure logger
         loggers = []
         if self.config.get('use_wandb', False) and self.wandb_run is not None:
             try:
                 import wandb
                 from pytorch_lightning.loggers import WandbLogger
+                
+                # Create custom tags and config for better organization
+                tags = [self.model_type, "texture", "contrastive"]
+                if self.config.get('experiment_name'):
+                    tags.append(self.config.get('experiment_name'))
+                
+                # Extract configuration for wandb
+                wandb_config = {
+                    "model_type": self.model_type,
+                    "learning_rate": self.config.get('optimizer_config', {}).get('lr', 1e-4),
+                    "weight_decay": self.config.get('optimizer_config', {}).get('weight_decay', 1e-4),
+                    "batch_size": self.config.get('loader_config', {}).get('batch_size', 4),
+                    "epochs": self.config.get('num_epochs', 50),
+                    "architecture": "TextureNet_Lightning",
+                    "loss_config": self.config.get('loss_config', {}),
+                    "dataset": self.config.get('data_config', {}).get('root_dir', '')
+                }
+                
+                # Set up logging of gradients and parameters
+                wandb.watch(self.model, log="all", log_freq=10)
+                
+                # Create the wandb logger
                 wandb_logger = WandbLogger(
                     project=self.config.get('wandb_project', 'MorphoFeatures'),
                     name=f"{self.model_type}_texture",
+                    tags=tags,
+                    config=wandb_config,
                     log_model=True,
                     save_dir=os.path.join(self.project_dir, 'logs')
                 )
+                
+                # Add model graph visualization
+                if hasattr(self.model, 'example_input_array'):
+                    wandb_logger.watch(self.model, log_freq=100)
+                    
                 loggers.append(wandb_logger)
+                logger.info(f"Initialized WandbLogger for {self.model_type} texture model")
             except Exception as e:
                 logger.warning(f"Could not initialize WandbLogger: {e}")
         
@@ -495,6 +569,15 @@ class TextureModelTrainer:
             name=f"{self.model_type}_texture"
         )
         loggers.append(tb_logger)
+        
+        # Add early stopping
+        early_stop_callback = pl.callbacks.EarlyStopping(
+            monitor='val_loss',
+            patience=20,
+            verbose=True,
+            mode='min'
+        )
+        callbacks.append(early_stop_callback)
         
         # Create the trainer
         self.trainer = pl.Trainer(
@@ -518,8 +601,65 @@ class TextureModelTrainer:
             if self.trainer is None:
                 self._setup_trainer()
                 
+            # Set up additional wandb logging for metrics that Lightning might not capture
+            if self.config.get('use_wandb', False) and self.wandb_run is not None:
+                # Create a callback to log after each epoch
+                class WandbMetricsLogger(pl.Callback):
+                    def on_train_epoch_end(self, trainer, pl_module):
+                        if hasattr(trainer, 'callback_metrics'):
+                            try:
+                                import wandb
+                                # Log all available metrics
+                                metrics = {f"train/{k}": v for k, v in trainer.callback_metrics.items() 
+                                          if not k.startswith('val_')}
+                                wandb.log(metrics, step=trainer.global_step)
+                            except Exception as e:
+                                logger.warning(f"Wandb training metrics logging error: {e}")
+                    
+                    def on_validation_epoch_end(self, trainer, pl_module):
+                        if hasattr(trainer, 'callback_metrics'):
+                            try:
+                                import wandb
+                                # Log all available metrics
+                                metrics = {f"val/{k}": v for k, v in trainer.callback_metrics.items() 
+                                          if k.startswith('val_')}
+                                wandb.log(metrics, step=trainer.global_step)
+                                
+                                # Log learning rate
+                                if hasattr(trainer, 'optimizers') and trainer.optimizers:
+                                    for i, optimizer in enumerate(trainer.optimizers):
+                                        for param_group in optimizer.param_groups:
+                                            wandb.log({f"lr/group_{i}": param_group['lr']}, 
+                                                     step=trainer.global_step)
+                            except Exception as e:
+                                logger.warning(f"Wandb validation metrics logging error: {e}")
+                
+                # Add the callback to the trainer
+                self.trainer.callbacks.append(WandbMetricsLogger())
+                logger.info("Added wandb metrics logging callback to trainer")
+                
             # Train the model
             self.trainer.fit(self.model, self.train_loader, self.val_loader)
+            
+            # Log final best model path
+            if self.config.get('use_wandb', False) and self.wandb_run is not None:
+                try:
+                    import wandb
+                    best_model_path = self.trainer.checkpoint_callback.best_model_path
+                    wandb.log({"best_model_path": best_model_path})
+                    
+                    # Log model as an artifact
+                    artifact = wandb.Artifact(
+                        name=f"{self.model_type}_texture_model", 
+                        type="model",
+                        description=f"Best {self.model_type} texture model"
+                    )
+                    artifact.add_file(best_model_path)
+                    wandb.log_artifact(artifact)
+                    
+                    logger.info(f"Logged best model to wandb: {best_model_path}")
+                except Exception as e:
+                    logger.warning(f"Failed to log best model to wandb: {e}")
             
             logger.info(f"Training completed. Best model saved at: {self.trainer.checkpoint_callback.best_model_path}")
             
@@ -692,18 +832,45 @@ def train_texture_model_from_config(config, model_type='lowres'):
         os.makedirs(config['project_directory'], exist_ok=True)
     
     # Configure wandb if requested
+    wandb_run = None
     if config.get('use_wandb', False):
         try:
             import wandb
             if not wandb.api.api_key:
-                wandb.login(key="9de783cdb1f22a4b8f97f7e05e4e057f668e0cfe")
+                # Try to login with the provided key or use environment variable
+                wandb_key = os.environ.get('WANDB_API_KEY', "9de783cdb1f22a4b8f97f7e05e4e057f668e0cfe")
+                wandb.login(key=wandb_key)
             
-            run = wandb.init(
+            # Define a more descriptive run name
+            run_name = config.get('wandb_run_name', f"{model_type}_texture_model")
+            if 'experiment_name' in config:
+                run_name = f"{run_name}_{config['experiment_name']}"
+                
+            # Create tags for better organization
+            tags = [model_type, "texture"]
+            # Add any additional tags from config
+            if config.get('tags'):
+                tags.extend(config.get('tags'))
+                
+            # Add timestamp to run name for uniqueness
+            timestamp = time.strftime('%Y%m%d_%H%M%S')
+            run_name = f"{run_name}_{timestamp}"
+            
+            # Start wandb run
+            wandb_run = wandb.init(
                 project=config.get('wandb_project', 'MorphoFeatures'),
+                name=run_name,
+                tags=tags,
                 config=config,
-                dir=os.environ.get("WANDB_DIR", None)
+                dir=os.environ.get("WANDB_DIR", None),
+                group=config.get('wandb_group', None)
             )
-            logger.info("Initialized wandb for texture model logging")
+            
+            logger.info(f"Initialized wandb for {model_type} texture model logging: {run_name}")
+            
+            # Store the run in config for later access
+            config['wandb_run'] = wandb_run
+            
         except Exception as e:
             logger.error(f"Failed to initialize wandb for texture model: {e}")
             config['use_wandb'] = False
@@ -715,6 +882,25 @@ def train_texture_model_from_config(config, model_type='lowres'):
     # Train the model
     logger.info("Starting training")
     trainer.train()
+    
+    # Finalize wandb if we started it
+    if wandb_run is not None:
+        try:
+            # Log final metrics
+            best_model_path = trainer.trainer.checkpoint_callback.best_model_path
+            wandb_run.summary['best_model_path'] = best_model_path
+            wandb_run.summary['best_val_loss'] = trainer.trainer.checkpoint_callback.best_model_score.item()
+            wandb_run.summary['total_epochs'] = trainer.trainer.current_epoch
+            
+            # Add notes about the run
+            notes = f"Model type: {model_type}\n"
+            notes += f"Best validation loss: {trainer.trainer.checkpoint_callback.best_model_score.item():.6f}\n"
+            notes += f"Trained for {trainer.trainer.current_epoch} epochs\n"
+            wandb_run.notes = notes
+            
+            logger.info("Finalized wandb run with summary metrics")
+        except Exception as e:
+            logger.warning(f"Error finalizing wandb run: {e}")
     
     return trainer
 
