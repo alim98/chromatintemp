@@ -40,3 +40,4 @@ low_res_dataset/*
 .vscode/*
 *.log
 wandb_runs/*
+morphofeatures_cache/*

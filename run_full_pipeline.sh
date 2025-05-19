@@ -24,6 +24,7 @@ EPOCHS=1
 MODEL_TYPE="all"  # Options: nucleus, texture-lowres, texture-highres, shape, all
 GPU_ID=0
 PRECOMPUTED_DIR="data/mesh_cache"
+CLASS_CSV="chromatin_classes_and_samples.csv"  # Adding class CSV parameter
 USE_WANDB=true
 
 # ====== PARSE ARGUMENTS ======
@@ -32,6 +33,11 @@ while [[ $# -gt 0 ]]; do
     case $key in
         --data-root)
             DATA_ROOT="$2"
+            shift
+            shift
+            ;;
+        --class-csv)  # Adding command line option for class CSV
+            CLASS_CSV="$2"
             shift
             shift
             ;;
@@ -83,6 +89,7 @@ while [[ $# -gt 0 ]]; do
             echo "Usage: bash run_full_pipeline.sh [options]"
             echo "Options:"
             echo "  --data-root DIR        Root directory containing data samples (default: $DATA_ROOT)"
+            echo "  --class-csv FILE       CSV file with chromatin classes and samples (default: $CLASS_CSV)"
             echo "  --low-res-dir DIR      Directory with low-resolution data (default: $LOW_RES_DIR)"
             echo "  --output-dir DIR       Output directory for results (default: $OUTPUT_DIR)"
             echo "  --batch-size N         Batch size for training (default: $BATCH_SIZE)"
@@ -106,6 +113,7 @@ done
 # ====== PRINT CONFIGURATION ======
 echo "===== MORPHOFEATURES PIPELINE CONFIGURATION ====="
 echo "Data root: $DATA_ROOT"
+echo "Class CSV: $CLASS_CSV"
 echo "Low-res dataset: $LOW_RES_DIR"
 echo "Output directory: $OUTPUT_DIR"
 echo "Batch size: $BATCH_SIZE"
@@ -224,15 +232,25 @@ esac
 
 # ====== STEP 3: GENERATE EMBEDDINGS ======
 echo "[3/3] Generating embeddings..."
+# Format the device string properly for PyTorch (cuda:0 or cpu)
+if [[ "$GPU_ID" =~ ^[0-9]+$ ]]; then
+    # If GPU_ID is a number, format as cuda:N
+    DEVICE="cuda:$GPU_ID"
+else
+    # Otherwise, use as-is (might be 'cpu' or already formatted)
+    DEVICE="$GPU_ID"
+fi
+
 python generate_embeddings.py \
-    --data-root "$DATA_ROOT" \
-    --low-res-dir "$LOW_RES_DIR" \
-    --output-dir "$OUTPUT_DIR/embeddings" \
-    --model-dir "$OUTPUT_DIR" \
-    --batch-size "$BATCH_SIZE" \
-    --num-workers "$NUM_WORKERS" \
-    --gpu-id "$GPU_ID" \
-    --precomputed-dir "$PRECOMPUTED_DIR"
+    --root_dir "$DATA_ROOT" \
+    --class_csv "$CLASS_CSV" \
+    --output_dir "$OUTPUT_DIR/embeddings" \
+    --nucleus_shape_model "$OUTPUT_DIR/shape_model.pt" \
+    --nucleus_coarse_texture_model "$OUTPUT_DIR/coarse_texture_model.pt" \
+    --nucleus_fine_texture_model "$OUTPUT_DIR/fine_texture_model.pt" \
+    --batch_size "$BATCH_SIZE" \
+    --num_workers "$NUM_WORKERS" \
+    --device "$DEVICE"
 
 echo "===== PIPELINE COMPLETED SUCCESSFULLY ====="
 echo "Results saved to: $OUTPUT_DIR"
