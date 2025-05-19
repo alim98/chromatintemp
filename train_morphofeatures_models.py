@@ -10,8 +10,7 @@ import traceback
 from tqdm import tqdm
 import numpy as np
 import pandas as pd
-import wandb
-wandb.login(key="9de783cdb1f22a4b8f97f7e05e4e057f668e0cfe")
+import pytorch_lightning as pl
 
 logger = logging.getLogger(__name__)
 
@@ -19,11 +18,25 @@ logger = logging.getLogger(__name__)
 sys.path.append(os.path.abspath("MorphoFeatures"))
 logger.info("Added MorphoFeatures to the path")
 
-
+# Import shape modules
 from MorphoFeatures.morphofeatures.shape.train_shape_model import ShapeTrainer
 from MorphoFeatures.morphofeatures.shape.network import DeepGCN
+
+# Import neural network modules
 from MorphoFeatures.morphofeatures.nn.texture_encoder import TextureEncoder
 from MorphoFeatures.morphofeatures.nn.losses import get_shape_loss, get_texture_loss
+
+# Import the new Lightning implementation
+try:
+    # Try direct import first
+    from MorphoFeatures.morphofeatures.texture.texture_lightning import TextureNet
+except ImportError:
+    # If that fails, try to import as a module
+    try:
+        from MorphoFeatures.morphofeatures import TextureNet
+    except ImportError:
+        logger.error("Failed to import TextureNet. Check your import paths.")
+        sys.exit(1)
 
 logger.info("Successfully imported MorphoFeatures modules")
 
@@ -44,6 +57,7 @@ class CustomShapeTrainer(ShapeTrainer):
         # Custom initialization for wandb
         self.step = 0
         self.use_wandb = config.get("use_wandb", False)
+        # Don't import wandb here - it will be imported only when needed
 
     # Override build_loaders to use our custom dataloader adapter
     def build_loaders(self):
@@ -131,13 +145,17 @@ class CustomShapeTrainer(ShapeTrainer):
 
             # Logging to wandb if enabled
             if self.use_wandb:
-                wandb.log(
-                    {
-                        "train/loss": loss.item(),
-                        "train/epoch": self.epoch
-                    },
-                    step=self.step
-                )
+                try:
+                    import wandb
+                    wandb.log(
+                        {
+                            "train/loss": loss.item(),
+                            "train/epoch": self.epoch
+                        },
+                        step=self.step
+                    )
+                except Exception as e:
+                    logger.warning(f"Wandb logging error: {e}")
 
             self.step += 1
 
@@ -145,13 +163,17 @@ class CustomShapeTrainer(ShapeTrainer):
         logger.info(f"Epoch {self.epoch} → avg train loss: {avg_loss:.6f}")
 
         if self.use_wandb:
-            wandb.log(
-                {
-                    "train/avg_loss": avg_loss,
-                    "train/epoch": self.epoch
-                },
-                step=self.step
-            )
+            try:
+                import wandb
+                wandb.log(
+                    {
+                        "train/avg_loss": avg_loss,
+                        "train/epoch": self.epoch
+                    },
+                    step=self.step
+                )
+            except Exception as e:
+                logger.warning(f"Wandb logging error: {e}")
 
         return avg_loss
 
@@ -189,13 +211,17 @@ class CustomShapeTrainer(ShapeTrainer):
         logger.info(f"Epoch {self.epoch} → avg validation loss: {avg_loss:.6f}")
 
         if self.use_wandb:
-            wandb.log(
-                {
-                    "val/loss": avg_loss,
-                    "val/epoch": self.epoch
-                },
-                step=self.step
-            )
+            try:
+                import wandb
+                wandb.log(
+                    {
+                        "val/loss": avg_loss,
+                        "val/epoch": self.epoch
+                    },
+                    step=self.step
+                )
+            except Exception as e:
+                logger.warning(f"Wandb logging error: {e}")
 
         # checkpoint best
         if self.best_val_loss is None or avg_loss < self.best_val_loss:
@@ -220,22 +246,9 @@ class CustomShapeTrainer(ShapeTrainer):
         use_wandb = self.config.get('use_wandb', True)
         self.use_wandb = use_wandb
         
-        if use_wandb:
-            try:
-                import wandb
-                with wandb.init(project=self.config.get('wandb_project', 'MorphoFeatures')):
-                    self.validate_epoch()
-                    self.train()
-            except (ImportError, AttributeError) as e:
-                logger.warning(f"Unable to use wandb for logging: {e}")
-                logger.warning("Continuing without wandb logging...")
-                self.use_wandb = False
-                self.validate_epoch()
-                self.train()
-        else:
-            logger.info("Wandb logging disabled in config. Using console output only.")
-            self.validate_epoch()
-            self.train()
+        # We don't need to initialize wandb here since it's now handled in train_shape_model_from_config
+        self.validate_epoch()
+        self.train()
             
     def fit(self):
         """Wrapper method to match the expected API in train_morphofeatures_models.py"""
@@ -245,36 +258,43 @@ class CustomShapeTrainer(ShapeTrainer):
 
 class TextureModelTrainer:
     """
-    Trainer for texture models (both low-res and high-res)
+    Trainer for texture models (both low-res and high-res) using PyTorch Lightning
     """
     def __init__(self, config, model_type='lowres'):
         logger.info(f"Initializing {model_type} TextureModelTrainer")
-        # Using PyTorch's native libraries instead of neurofire
+        # Using PyTorch Lightning and MONAI instead of inferno/neurofire
         self.config = config
         self.model_type = model_type
         self.device = torch.device(config.get('device', 'cpu'))
         logger.info(f"Using device: {self.device}")
         print(self.device)
         self.project_dir = config.get('project_directory', f'experiments/{model_type}_texture_model')
-        os.makedirs(os.path.join(self.project_dir, 'Weights'), exist_ok=True)
-        os.makedirs(os.path.join(self.project_dir, 'Logs'), exist_ok=True)
+        os.makedirs(os.path.join(self.project_dir, 'checkpoints'), exist_ok=True)
+        os.makedirs(os.path.join(self.project_dir, 'logs'), exist_ok=True)
         logger.info(f"Created project directory: {self.project_dir}")
         
         # Start a new wandb run for this training
-        self.wandb_run = wandb.init(
-            entity=config.get('wandb_entity', None),
-            project=config.get('wandb_project', 'MorphoFeatures'),
-            config={
-                'model_type': model_type,
-                'learning_rate': config.get('training_optimizer_kwargs', {}).get('optimizer_kwargs', {}).get('lr', None),
-                'architecture': config.get('model_name', 'UNet3D'),
-                'dataset': config.get('data_config', {}).get('root_dir', ''),
-                'epochs': config.get('num_epochs', 1),
-                'batch_size': config.get('loader_config', {}).get('batch_size', 4),
-                'box_size': config.get('data_config', {}).get('box_size', None),
-            }
-        )
-        logger.info("Started wandb run for training")
+        self.wandb_run = None
+        if config.get('use_wandb', False):
+            try:
+                import wandb
+                self.wandb_run = wandb.init(
+                    entity=config.get('wandb_entity', None),
+                    project=config.get('wandb_project', 'MorphoFeatures'),
+                    config={
+                        'model_type': model_type,
+                        'learning_rate': config.get('optimizer_config', {}).get('lr', 1e-4),
+                        'architecture': 'TextureNet_Lightning',
+                        'dataset': config.get('data_config', {}).get('root_dir', ''),
+                        'epochs': config.get('num_epochs', 1),
+                        'batch_size': config.get('loader_config', {}).get('batch_size', 4),
+                        'box_size': config.get('data_config', {}).get('box_size', None),
+                    }
+                )
+                logger.info("Started wandb run for training")
+            except Exception as e:
+                logger.warning(f"Failed to initialize wandb: {e}")
+                logger.warning("Continuing without wandb logging")
         
         # Try to import the custom dataloader adapter
         from dataloader.lowres_texture_adapter import get_morphofeatures_texture_dataloader
@@ -282,97 +302,42 @@ class TextureModelTrainer:
         self.has_texture_dataloader = True
         logger.info("Successfully imported texture dataloader")
             
-        # Setup the texture model
+        # Setup the texture model and dataloaders
         self.setup_model()
-
-        # If weight sharing is requested (for fine texture nucleus), load weights
-        share_path = self.config.get('share_weights_from')
-        if share_path and os.path.exists(share_path):
-            try:
-                logger.info(f"Loading shared weights from {share_path}")
-                state = torch.load(share_path, map_location=self.device)
-                if isinstance(self.model, TextureEncoder):
-                    self.model.transfer_weights(state['model_state_dict'] if 'model_state_dict' in state else state)
-                    logger.info("Shared weights loaded into TextureEncoder")
-            except Exception as e:
-                logger.warning(f"Unable to load shared weights: {e}")
-
-        # Setup dataloaders
         self.setup_dataloaders()
 
-
-    
     def setup_model(self):
-        """Set up the texture model, criterion, optimizer, and trainer"""
-        logger.info("Setting up model")
-        model_kwargs = self.config.get('model_kwargs', {})
+        """Set up the Lightning texture model"""
+        logger.info("Setting up Lightning model")
         
-        # Default texture encoder parameters to match the paper
-        if 'f_maps' not in model_kwargs:
-            model_kwargs['f_maps'] = [64, 128, 256]  # Paper spec: 64→128→256
-        if 'out_channels' not in model_kwargs:
-            model_kwargs['out_channels'] = 80  # 80-D embeddings
+        # Adapt config format for TextureNet
+        model_config = self.config.get('model_config', {})
+        if 'f_maps' in self.config.get('model_kwargs', {}):
+            model_config['feature_dim'] = self.config.get('model_kwargs', {}).get('out_channels', 80)
         
-        logger.debug(f"Model kwargs: {model_kwargs}")
+        # Create a copy of the config with updated format for Lightning
+        lightning_config = {
+            'model_config': model_config,
+            'optimizer_config': {
+                'lr': self.config.get('training_optimizer_kwargs', {}).get('optimizer_kwargs', {}).get('lr', 1e-4),
+                'weight_decay': self.config.get('training_optimizer_kwargs', {}).get('optimizer_kwargs', {}).get('weight_decay', 1e-4)
+            },
+            'scheduler_config': {
+                'type': 'plateau',
+                'factor': 0.95,
+                'patience': 5
+            },
+            'lambda_rec': self.config.get('lambda_rec', 1.0),
+            'temperature': self.config.get('temperature', 0.1)
+        }
         
-        # Create texture encoder from MorphoFeatures
-        self.model = TextureEncoder(**model_kwargs).to(self.device)
-        logger.info(f"Created TextureEncoder model with feature maps {model_kwargs.get('f_maps')}")
+        # Create Lightning model
+        self.model = TextureNet(lightning_config)
+        logger.info("Created TextureNet Lightning model")
         
-        # Use MorphoFeatures combined loss (contrastive + reconstruction + regularization)
-        if self.config.get('use_morphofeatures_loss', True):
-            logger.info("Using MorphoFeatures combined loss")
-            # For texture model, use full loss with autoencoder component
-            self.criterion = get_texture_loss()
-        else:
-            # Fallback to standard loss if specified
-            criterion_name = self.config.get('loss', 'MSELoss')
-            criterion_kwargs = self.config.get('loss_kwargs', {})
-            logger.debug(f"Using standard criterion: {criterion_name}, kwargs: {criterion_kwargs}")
-            
-            if isinstance(criterion_name, str):
-                self.criterion = getattr(torch.nn, criterion_name)(**criterion_kwargs)
-            else:
-                self.criterion = None
+        # Create Trainer
+        self.trainer = None  # Will be created after dataloaders are set up
         
-        logger.info(f"Created criterion: {self.criterion}")
-        
-        # Build optimizer with paper defaults
-        optimizer_config = self.config.get('training_optimizer_kwargs', {})
-        optimizer_method = optimizer_config.pop('optimizer', 'Adam')
-        
-        # Use paper defaults if not specified
-        optimizer_kwargs = optimizer_config.pop('optimizer_kwargs', {}) if 'optimizer_kwargs' in optimizer_config else {}
-        if 'lr' not in optimizer_kwargs:
-            optimizer_kwargs['lr'] = 1e-4  # Paper default for texture
-        if 'weight_decay' not in optimizer_kwargs:
-            optimizer_kwargs['weight_decay'] = 4e-4  # Paper default
-        
-        logger.debug(f"Optimizer: {optimizer_method}, kwargs: {optimizer_kwargs}")
-        
-        self.optimizer = getattr(torch.optim, optimizer_method)(
-            self.model.parameters(), 
-            **optimizer_kwargs
-        )
-        logger.info(f"Created optimizer: {self.optimizer}")
-        
-        # Setup scheduler for learning rate - ReduceLROnPlateau matches paper
-        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            self.optimizer, 
-            mode='min',
-            factor=0.95,  # Paper says "training stops on plateau"
-            patience=5,
-            verbose=True
-        )
-        logger.info("Created learning rate scheduler")
-        
-        # Best validation score tracking
-        self.best_val_loss = float('inf')
-        self.val_loss_momentum = 0
-        self.smoothness = self.config.get('smoothness', 0.95)
-        logger.info("Model setup complete")
-
-    
     def setup_dataloaders(self):
         """Setup custom texture dataloaders for training and validation"""
         logger.info(f"Setting up {self.model_type} texture dataloaders")
@@ -469,143 +434,83 @@ class TextureModelTrainer:
             )
 
             logger.info(f"Created dataloader with {len(self.train_loader.dataset)} training samples and {len(self.val_loader.dataset)} validation samples")
+            
+            # Now that we have dataloaders, create the Lightning trainer
+            self._setup_trainer()
+            
         except Exception as e:
             logger.error(f"Error in setup_dataloaders: {str(e)}")
             logger.error(traceback.format_exc())
             raise
     
+    def _setup_trainer(self):
+        """Set up the Lightning Trainer"""
+        # Configure callbacks
+        callbacks = [
+            pl.callbacks.ModelCheckpoint(
+                dirpath=os.path.join(self.project_dir, 'checkpoints'),
+                filename='{epoch}-{val_loss:.4f}',
+                save_top_k=3,
+                monitor='val_loss',
+                mode='min',
+                save_last=True
+            ),
+            pl.callbacks.LearningRateMonitor(logging_interval='epoch')
+        ]
+        
+        # Configure logger
+        loggers = []
+        if self.config.get('use_wandb', False) and self.wandb_run is not None:
+            try:
+                import wandb
+                from pytorch_lightning.loggers import WandbLogger
+                wandb_logger = WandbLogger(
+                    project=self.config.get('wandb_project', 'MorphoFeatures'),
+                    name=f"{self.model_type}_texture",
+                    log_model=True,
+                    save_dir=os.path.join(self.project_dir, 'logs')
+                )
+                loggers.append(wandb_logger)
+            except Exception as e:
+                logger.warning(f"Could not initialize WandbLogger: {e}")
+        
+        # Add TensorBoard logger
+        from pytorch_lightning.loggers import TensorBoardLogger
+        tb_logger = TensorBoardLogger(
+            save_dir=os.path.join(self.project_dir, 'logs'),
+            name=f"{self.model_type}_texture"
+        )
+        loggers.append(tb_logger)
+        
+        # Create the trainer
+        self.trainer = pl.Trainer(
+            accelerator="gpu" if torch.cuda.is_available() else "cpu",
+            devices=1 if torch.cuda.is_available() else None,
+            max_epochs=self.config.get('num_epochs', 50),
+            callbacks=callbacks,
+            logger=loggers,
+            log_every_n_steps=10,
+            precision="16-mixed" if self.config.get('use_amp', False) else "32",
+            default_root_dir=self.project_dir
+        )
+        
+        logger.info("Created Lightning Trainer")
+    
     def train(self):
-        """Train the model using MorphoFeatures TextureEncoder"""
-        logger.info("Starting training")
+        """Train the model using Lightning"""
+        logger.info("Starting Lightning training")
         try:
-            num_epochs = self.config.get('num_epochs', 50)
-            logger.info(f"Training for {num_epochs} epochs")
-            for epoch in range(num_epochs):
-                logger.info(f"Epoch {epoch+1}/{num_epochs}")
-                # Training loop
-                self.model.train()
-                train_loss = 0.0
-                for i, batch in enumerate(tqdm(self.train_loader, desc=f"Training epoch {epoch+1}")):
-                    inputs, targets = batch
-                    logger.debug(f"Batch {i+1} - input shape: {inputs.shape}")
-                    
-                    # Move data to device
-                    inputs = inputs.to(self.device)
-                    targets = inputs.clone()  # For autoencoder, target is same as input
-                    
-                    # Zero the parameter gradients
-                    self.optimizer.zero_grad()
-                    
-                    # Forward pass through TextureEncoder
-                    # This returns (projection, embedding, reconstruction)
-                    outputs = self.model(inputs)
-                    
-                    # Use MorphoFeatures combined loss
-                    loss = self.criterion(outputs, inputs)
-                    
-                    # Backward pass and optimize
-                    loss.backward()
-                    self.optimizer.step()
-                    train_loss += loss.item()
-                    
-                    # Log batch loss to wandb
-                    self.wandb_run.log({
-                        "batch_train_loss": loss.item(), 
-                        "epoch": epoch+1, 
-                        "batch": i+1
-                    })
-                    
-                    # Validate periodically
-                    if (i+1) % 100 == 0:
-                        logger.info(f"Validating at iteration {i+1}")
-                        self.validate()
-                        # Switch back to train mode
-                        self.model.train()
-                        
-                # Calculate average training loss
-                avg_train_loss = train_loss / len(self.train_loader)
-                logger.info(f"Training Loss: {avg_train_loss:.4f}")
+            # Make sure trainer is created
+            if self.trainer is None:
+                self._setup_trainer()
                 
-                # Log epoch train loss to wandb
-                self.wandb_run.log({
-                    "epoch_train_loss": avg_train_loss, 
-                    "epoch": epoch+1
-                })
-                
-                # Validate at the end of each epoch
-                val_loss = self.validate()
-                
-                # Log validation loss to wandb
-                self.wandb_run.log({
-                    "epoch_val_loss": val_loss, 
-                    "epoch": epoch+1
-                })
-                
-                # Update learning rate
-                self.scheduler.step(val_loss)
-                
-                # Save model if validation loss improved
-                if val_loss < self.best_val_loss:
-                    logger.info(f"Validation loss improved from {self.best_val_loss:.4f} to {val_loss:.4f}")
-                    self.best_val_loss = val_loss
-                    
-                    # Save model
-                    model_path = os.path.join(self.project_dir, 'Weights', f'best_model_epoch_{epoch+1}.pt')
-                    torch.save({
-                        'epoch': epoch,
-                        'model_state_dict': self.model.state_dict(),
-                        'optimizer_state_dict': self.optimizer.state_dict(),
-                        'loss': val_loss,
-                    }, model_path)
-                    logger.info(f"Model saved to {model_path}")
-                
-            # Finish the wandb run after training
-            self.wandb_run.finish()
+            # Train the model
+            self.trainer.fit(self.model, self.train_loader, self.val_loader)
+            
+            logger.info(f"Training completed. Best model saved at: {self.trainer.checkpoint_callback.best_model_path}")
             
         except Exception as e:
             logger.error(f"Error during training: {str(e)}")
-            logger.error(traceback.format_exc())
-            # Ensure wandb run is finished on error
-            self.wandb_run.finish()
-            raise
-    
-    def validate(self):
-        """Validate the model with TextureEncoder outputs"""
-        logger.info("Validating model")
-        try:
-            self.model.eval()
-            val_loss = 0.0
-            
-            with torch.no_grad():
-                for i, batch in enumerate(tqdm(self.val_loader, desc="Validation")):
-                    inputs, _ = batch
-                    logger.debug(f"Validation batch {i+1} - input shape: {inputs.shape}")
-                    
-                    # Move data to device
-                    inputs = inputs.to(self.device)
-                    
-                    # Forward pass through TextureEncoder
-                    # During validation, we still get (projection, embedding, reconstruction)
-                    outputs = self.model(inputs)
-                    
-                    # Use the same loss as in training
-                    loss = self.criterion(outputs, inputs)
-                    
-                    val_loss += loss.item()
-            
-            # Calculate average validation loss
-            avg_val_loss = val_loss / len(self.val_loader)
-            
-            # Update the momentum-based validation loss for learning rate scheduling
-            if self.val_loss_momentum == 0:
-                self.val_loss_momentum = avg_val_loss
-            else:
-                self.val_loss_momentum = self.smoothness * self.val_loss_momentum + (1 - self.smoothness) * avg_val_loss
-            
-            logger.info(f"Validation Loss: {avg_val_loss:.4f}")
-            return avg_val_loss
-        except Exception as e:
-            logger.error(f"Error during validation: {str(e)}")
             logger.error(traceback.format_exc())
             raise
 
@@ -747,8 +652,8 @@ def train_texture_model(config_path, model_type='lowres'):
     if 'project_directory' in config:
         os.makedirs(config['project_directory'], exist_ok=True)
     
-    # Train a texture model
-    logger.info(f"Creating {model_type} TextureModelTrainer")
+    # Train a texture model using Lightning
+    logger.info(f"Creating {model_type} TextureModelTrainer with Lightning")
     trainer = TextureModelTrainer(config, model_type=model_type)
     
     # Train the model
@@ -785,13 +690,28 @@ def main():
     if not isinstance(numeric_level, int):
         raise ValueError(f"Invalid log level: {args.logging}")
     
+    # Create a unique timestamp for this run
+    timestamp = time.strftime('%Y%m%d_%H%M%S')
+    
+    # Try to create wandb directory with a more robust approach
+    try:
+        # Use a timestamped wandb directory to avoid conflicts
+        wandb_dir = f"wandb_runs/{timestamp}"
+        os.makedirs(wandb_dir, exist_ok=True)
+        os.environ["WANDB_DIR"] = wandb_dir
+        logger.info(f"Using wandb directory: {wandb_dir}")
+    except OSError as e:
+        logger.warning(f"Could not create wandb directory: {e}")
+        logger.warning("Will use default wandb directory")
+        # Let wandb handle directory creation
+    
     logging.basicConfig(
         level=numeric_level,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        handlers=[
-            logging.StreamHandler(),
-            logging.FileHandler(f"morphofeatures_training_{time.strftime('%Y%m%d_%H%M%S')}.log")
-        ]
+        # format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        # handlers=[
+        #     logging.StreamHandler(),
+        #     logging.FileHandler(f"morphofeatures_training_{timestamp}.log")
+        # ]
     )
     
     # If command-line arguments are provided, create a config from them
@@ -802,12 +722,20 @@ def main():
             parser.print_help()
             return 1
         
+        # Check CUDA availability
+        cuda_available = torch.cuda.is_available()
+        if args.gpu_id is not None and not cuda_available:
+            logger.warning("CUDA is not available. Falling back to CPU.")
+            device = "cpu"
+        else:
+            device = f"cuda:{args.gpu_id}" if args.gpu_id is not None else "cpu"
+        
         # Create a config based on command-line arguments
         if args.model_type == "shape":
             # Create shape model config
             config = {
                 "experiment_dir": os.path.join(args.output_dir, "shape_model"),
-                "device": f"cuda:{args.gpu_id}" if args.gpu_id is not None else "cpu",
+                "device": device,
                 "data": {
                     "root_dir": args.data_root,
                     "class_csv_path": "chromatin_classes_and_samples.csv",
@@ -921,11 +849,24 @@ def train_shape_model_from_config(config):
     
     # Configure wandb if requested
     if config.get('use_wandb', False):
-        wandb.init(
-            project=config.get('wandb_project', 'MorphoFeatures'),
-            config=config
-        )
-        logger.info("Initialized wandb for logging")
+        try:
+            # Import wandb here to avoid early initialization
+            import wandb
+            # Only login if not already logged in
+            if not wandb.api.api_key:
+                wandb.login(key="9de783cdb1f22a4b8f97f7e05e4e057f668e0cfe")
+            
+            # Initialize wandb run with custom settings
+            run = wandb.init(
+                project=config.get('wandb_project', 'MorphoFeatures'),
+                config=config,
+                dir=os.environ.get("WANDB_DIR", None)  # Use environment variable if set
+            )
+            logger.info("Initialized wandb for logging")
+        except Exception as e:
+            logger.error(f"Failed to initialize wandb: {e}")
+            logger.warning("Continuing without wandb logging")
+            config['use_wandb'] = False
     
     # Create the trainer
     logger.info("Creating CustomShapeTrainer")

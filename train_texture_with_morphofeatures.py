@@ -1,26 +1,31 @@
+#!/usr/bin/env python
 import os
 import sys
 import argparse
 import yaml
 import torch.nn as nn
+import logging
+import torch
 
-# Add MorphoFeatures to the path
-sys.path.append(os.path.abspath("MorphoFeatures"))
+# Add MorphoFeatures to the path if needed
+if not any("MorphoFeatures" in p for p in sys.path):
+    sys.path.append(os.path.abspath("MorphoFeatures"))
 
-# We'll try to import from MorphoFeatures, but we'll use compatibility wrappers
+# Use try-except to handle different import scenarios
 try:
-    # Import necessary components from MorphoFeatures
-    from MorphoFeatures.morphofeatures.texture.train import compile_criterion, set_up_training
-    from MorphoFeatures.morphofeatures.texture.cell_loader import collate_contrastive
-except ImportError as e:
-    print(f"Warning: Could not import from MorphoFeatures texture module: {e}")
-    print("Make sure MorphoFeatures is properly installed.")
-    sys.exit(1)
+    from MorphoFeatures.morphofeatures.texture.train import create_unet_model, ModelTrainer, compile_criterion
+except ImportError:
+    try:
+        from morphofeatures.texture.train import create_unet_model, ModelTrainer, compile_criterion
+    except ImportError:
+        print("Error: Unable to import from morphofeatures.texture.train")
+        print("Current path:", sys.path)
+        sys.exit(1)
 
 # Import our custom dataloaders
 from dataloader.highres_contrastive_dataloader import get_highres_contrastive_loaders
 from dataloader.lowres_contrastive_dataloader import get_lowres_contrastive_loaders
-from dataloader.contrastive_transforms import collate_contrastive
+from dataloader.contrastive_transforms import collate_contrastive as custom_collate_contrastive
 
 
 class CustomTextureLoader:
@@ -141,37 +146,110 @@ def training(project_directory, texture_type, config_file, devices, from_checkpo
     logger.info(f"Using devices {devices}")
     os.environ["CUDA_VISIBLE_DEVICES"] = devices
     
+    # Initialize trainer as None
+    trainer = None
+    
+    # Load configuration
+    with open(config_file, 'r') as f:
+        config = yaml.safe_load(f)
+    
     # Load the trainer
     if from_checkpoint:
         try:
-            from inferno.trainers.basic import Trainer
-            trainer = Trainer().load(from_directory=project_directory,
-                                    filename='Weights/checkpoint.pytorch')
-        except ImportError:
-            logger.error("Could not import Trainer from inferno. Make sure it's installed.")
-            return
+            # Create a basic model as placeholder (will be replaced with loaded weights)
+            model_config = config.get('model_kwargs', {})
+            model = create_unet_model(config)
+            
+            # Initialize trainer with the model
+            trainer = ModelTrainer(model)
+            
+            # Load checkpoint
+            trainer = trainer.load(
+                from_directory=os.path.join(project_directory, 'Weights'),
+                filename='checkpoint.pytorch'
+            )
         except Exception as e:
             logger.error(f"Error loading checkpoint: {e}")
             return
     else:
-        # Load config and set up training
-        with open(config_file, 'r') as f:
-            config = yaml.safe_load(f)
-        
         try:
-            # Import necessary libraries
-            import torch.nn as nn
-            import neurofire.models as models
-            from inferno.trainers.basic import Trainer
+            # Create model
+            model = create_unet_model(config)
             
-            # Set up the trainer
-            trainer = set_up_training(project_directory, config)
-        except ImportError:
-            logger.error("Could not import required libraries (inferno, neurofire).")
-            return
+            # Create criterion
+            criterion = compile_criterion(config.get('loss'), **config.get('loss_kwargs', {}))
+            
+            # Create trainer
+            trainer = ModelTrainer(model)
+            logger.info("Built trainer with model")
+            
+            # Add steps one by one with debugging
+            try:
+                trainer.build_criterion(criterion)
+                logger.info("Built criterion successfully")
+                
+                trainer.build_validation_criterion(criterion)
+                logger.info("Built validation criterion successfully")
+                
+                # Extract optimizer config
+                optimizer_config = config.get('training_optimizer_kwargs', {})
+                optimizer_name = optimizer_config.get('optimizer', 'Adam')
+                # Ensure optimizer_name is a string, not an integer
+                if isinstance(optimizer_name, int):
+                    logger.warning(f"Found integer optimizer_name: {optimizer_name}, using 'Adam' instead")
+                    optimizer_name = 'Adam'
+                optimizer_params = optimizer_config.get('optimizer_kwargs', {})
+                
+                # Build optimizer with correct parameters
+                trainer.build_optimizer(optimizer_name, **optimizer_params)
+                logger.info("Built optimizer successfully")
+                
+                # Debug validate_every - potential issue here
+                validate_every_val = (100, 'iterations')
+                logger.info(f"validate_every: {validate_every_val} (type: {type(validate_every_val)})")
+                logger.info(f"validate_every[0]: {validate_every_val[0]} (type: {type(validate_every_val[0])})")
+                
+                trainer.set_validate_every(validate_every_val, for_num_iterations=20)
+                logger.info("Set validate_every successfully")
+                
+                trainer.save_every((1000, 'iterations'), 
+                                  to_directory=os.path.join(project_directory, 'Weights'))
+                logger.info("Set save_every successfully")
+                
+                # Set up tensorboard logging
+                trainer.build_logger(log_directory=os.path.join(project_directory, 'Logs'))
+                logger.info("Built logger successfully")
+                
+            except Exception as e:
+                logger.error(f"Error during trainer setup: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
+                return
+            
+            # Print config for debugging
+            logger.info("Training optimizer kwargs:")
+            logger.info(f"Config: {config}")
+            logger.info(f"Loss: {config.get('loss')}")
+            logger.info(f"Loss kwargs: {config.get('loss_kwargs')}")
+            logger.info(f"Optimizer config: {optimizer_config}")
+            logger.info(f"Optimizer name: {optimizer_name} (type: {type(optimizer_name)})")
+            logger.info(f"Optimizer params: {optimizer_params}")
+            
+            # Debug what's in the criterion
+            try:
+                criterion_debug = compile_criterion(config.get('loss'), **config.get('loss_kwargs', {}))
+                logger.info(f"Criterion type: {type(criterion_debug)}")
+            except Exception as e:
+                logger.error(f"Error creating criterion: {e}")
+            
         except Exception as e:
             logger.error(f"Error setting up training: {e}")
             return
+    
+    # Verify that trainer was properly initialized
+    if trainer is None:
+        logger.error("Trainer was not properly initialized. Aborting.")
+        return
     
     # Load our custom dataloaders
     logger.info(f"Loading training and validation data loader from {config_file}")
@@ -179,8 +257,6 @@ def training(project_directory, texture_type, config_file, devices, from_checkpo
     train_loader, validation_loader = loader.get_train_loaders()
     
     # Set max number of epochs
-    with open(config_file, 'r') as f:
-        config = yaml.safe_load(f)
     trainer.set_max_num_epochs(config.get('num_epochs', 10))
     
     # Bind loaders to trainer
@@ -188,20 +264,10 @@ def training(project_directory, texture_type, config_file, devices, from_checkpo
     trainer.bind_loader('train', train_loader).bind_loader('validate', validation_loader)
     
     # GPU setup
-    if isinstance(trainer.model, torch.nn.DataParallel):
-        trainer.model = trainer.model.module
-    trainer.cuda([0])  # Use first GPU
-    
-    # Set optimization level if using AMP
-    trainer.apex_opt_level = config.get('opt_level', "O1")
-    trainer.mixed_precision = config.get('mixed_precision', "False")
-    
-    # Multi-GPU setup if needed
-    if len(devices.split(',')) > 1:
-        trainer.model = nn.DataParallel(trainer.model)
-    
-    # Use dill for pickle since it handles more types
-    trainer.pickle_module = 'dill'
+    if torch.cuda.is_available():
+        device_ids = [i for i in range(len(devices.split(',')))]
+        if len(device_ids) > 0:
+            trainer.cuda(device_ids=device_ids if len(device_ids) > 1 else None)
     
     # Start training
     logger.info("Starting training!")

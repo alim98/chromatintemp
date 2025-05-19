@@ -49,7 +49,7 @@ criterion:
 # Training parameters
 training:
   validate_every: 1
-  epochs: 50
+  epochs:1
   checkpoint_every: 1
 
 # Scheduler configuration

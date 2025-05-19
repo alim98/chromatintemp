@@ -1,0 +1,27 @@
+from setuptools import setup, find_packages
+
+setup(
+    name="morphofeatures",
+    version="0.2.0",
+    packages=find_packages(),
+    install_requires=[
+        "torch>=1.10.0",
+        "pytorch-lightning>=1.6.0",
+        "monai>=0.9.0",
+        "pyyaml>=6.0",
+        "numpy>=1.20.0",
+        "h5py>=3.7.0",
+        "z5py>=2.0.16",
+        "scikit-image>=0.19.0",
+        "pandas>=1.3.0",
+        "pybdv>=0.5.0",
+    ],
+    python_requires=">=3.7",
+    author="MorphoFeatures Team",
+    description="A modernized version of MorphoFeatures using PyTorch Lightning and MONAI",
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
+    ],
+) 

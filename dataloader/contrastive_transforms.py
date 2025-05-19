@@ -65,19 +65,19 @@ def get_transforms_for_contrastive(target_size):
 
 def collate_contrastive(batch):
     """
-    Collate function for contrastive learning, similar to MorphoFeatures.
+    Custom collate function for contrastive learning.
     
     Args:
-        batch (list): List of (input_pair, target_pair) tuples
+        batch: List of tuples containing (inputs, targets)
         
     Returns:
-        tuple: (inputs, targets) tensors for training
+        tuple: (inputs, targets)
     """
-    inputs = torch.cat([item[0] for item in batch])
-    targets = torch.cat([item[1] for item in batch])
+    inputs = torch.cat([i[0] for i in batch])
+    targets = torch.cat([i[1] for i in batch]) if len(batch[0]) > 1 else None
     
-    if len(batch[0]) == 3:
-        targets2 = torch.cat([item[2] for item in batch])
+    if len(batch[0]) > 2:
+        targets2 = torch.cat([i[2] for i in batch])
         targets = [targets, targets2]
     
     return inputs, targets 

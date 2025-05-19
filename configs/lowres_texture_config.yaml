@@ -1,6 +1,6 @@
 # Configuration for training the low-resolution texture model
 project_directory: experiments/lowres_texture_model
-device: "cuda"
+device: "cpu"
 
 # Training configuration
 model_name: UNet3D
@@ -22,7 +22,7 @@ training_optimizer_kwargs:
     weight_decay: 0.00001
 
 # General training settings
-num_epochs: 50
+num_epochs: 1
 num_epochs_debug: 3  # Fewer epochs for debugging
 smoothness: 0.95
 opt_level: O1

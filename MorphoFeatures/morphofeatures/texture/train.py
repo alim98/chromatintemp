@@ -15,7 +15,17 @@ from monai.networks.nets import UNet
 from monai.losses import DiceLoss
 from torch.utils.tensorboard import SummaryWriter
 
-from cell_loader import CellLoaders
+# Fix the import path with try-except to handle different import configurations
+try:
+    # Try relative import first
+    from .cell_loader import CellLoaders
+except ImportError:
+    try:
+        # Try absolute import
+        from morphofeatures.texture.cell_loader import CellLoaders
+    except ImportError:
+        # Fallback to direct import
+        from cell_loader import CellLoaders
 
 logging.basicConfig(format='[+][%(asctime)-15s][%(name)s %(levelname)s]'
                            ' %(message)s',
@@ -26,18 +36,31 @@ logger = logging.getLogger(__name__)
 
 def compile_criterion(criterion, **criterion_kwargs):
     """Helper function to create loss criterion"""
+    logger.info(f"Creating criterion from: {criterion} (type: {type(criterion)})")
+    logger.info(f"Criterion kwargs: {criterion_kwargs}")
+    
+    # Handle integer criterion by converting to string (likely a reference to BCELoss)
+    if isinstance(criterion, int):
+        logger.warning(f"Received integer criterion: {criterion}, converting to 'BCELoss'")
+        criterion = 'BCELoss'
+    
     if isinstance(criterion, str):
         # Check standard PyTorch losses
         if hasattr(nn, criterion):
+            logger.info(f"Using nn.{criterion}")
             pr_criterion = getattr(nn, criterion)(**criterion_kwargs)
         # Check MONAI losses
         elif hasattr(torch.nn, criterion):
+            logger.info(f"Using torch.nn.{criterion}")
             pr_criterion = getattr(torch.nn, criterion)(**criterion_kwargs)
         # Try MONAI losses
         elif hasattr(DiceLoss, criterion):
+            logger.info(f"Using DiceLoss.{criterion}")
             pr_criterion = getattr(DiceLoss, criterion)(**criterion_kwargs)
         else:
-            raise ValueError(f"Unknown criterion: {criterion}")
+            error_msg = f"Unknown criterion: {criterion}"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
     elif isinstance(criterion, dict):
         # Multiple losses
         cr_list = []
@@ -80,18 +103,35 @@ def create_unet_model(config):
         model_kwargs['out_channels'] = 1
     
     # Configure MONAI UNet with appropriate dimensions and channels
-    dimensions = 3  # 3D UNet
-    channels = model_kwargs.get('f_maps', [32, 64, 128, 256])
+    spatial_dims = 3  # 3D UNet
+    
+    # Use smaller feature maps and fewer downsampling steps for small z-dimensions
+    channels = model_kwargs.get('f_maps', [16, 32, 64, 128])
+    
+    # Limit depth of UNet based on input dimensions
+    # For depth=8 after padding, we can have at most 3 downsampling operations
+    # (8 -> 4 -> 2 -> 1)
+    if len(channels) > 4:
+        logger.info(f"Limiting UNet depth due to small z-dimension. Channels: {channels[:4]}")
+        channels = channels[:4]  # Limit to 4 levels
+    
     strides = [2] * (len(channels) - 1)
     
-    # Create the MONAI UNet model
+    logger.info(f"Creating UNet3D with channels: {channels}, strides: {strides}")
+    
+    # Create the MONAI UNet model with more explicit parameters
     model = UNet(
-        dimensions=dimensions,
+        spatial_dims=spatial_dims,
         in_channels=model_kwargs['in_channels'],
         out_channels=model_kwargs['out_channels'],
         channels=channels,
         strides=strides,
-        num_res_units=2
+        num_res_units=2,
+        norm='BATCH',
+        dropout=0.0,
+        kernel_size=3,
+        up_kernel_size=3,
+        act='PRELU',
     )
     
     # Add sigmoid activation if needed
@@ -136,15 +176,74 @@ class ModelTrainer:
         self.optimizer = optimizer_class(self.model.parameters(), **optimizer_kwargs)
         return self
     
-    def validate_every(self, validate_every, for_num_iterations=20):
-        self.validate_every = validate_every[0] if isinstance(validate_every, tuple) else validate_every
+    def set_validate_every(self, validate_every, for_num_iterations=20):
+        """
+        Set validation interval
+        
+        Args:
+            validate_every: Can be an int or a tuple (iterations, 'iterations')
+            for_num_iterations: Number of iterations to validate for
+        """
+        logger.info(f"Setting validate_every with value: {validate_every} (type: {type(validate_every)})")
+        
+        if isinstance(validate_every, tuple):
+            # Handle tuple case (iterations, 'iterations')
+            try:
+                self.validate_every = validate_every[0]
+                logger.info(f"Set self.validate_every = {self.validate_every} from tuple[0]")
+            except (IndexError, TypeError) as e:
+                logger.error(f"Error extracting value from validate_every tuple: {e}")
+                # Use default as fallback
+                self.validate_every = 100
+                logger.info(f"Using default validate_every = {self.validate_every}")
+        else:
+            # Handle integer or other types
+            try:
+                self.validate_every = int(validate_every)
+                logger.info(f"Set self.validate_every = {self.validate_every} from direct value")
+            except (ValueError, TypeError) as e:
+                logger.error(f"Error converting validate_every to int: {e}")
+                # Use default as fallback
+                self.validate_every = 100
+                logger.info(f"Using default validate_every = {self.validate_every}")
+                
         self.validate_for = for_num_iterations
         return self
     
     def save_every(self, save_every, to_directory=None):
-        self.save_every_n = save_every[0] if isinstance(save_every, tuple) else save_every
+        """
+        Set checkpoint saving interval
+        
+        Args:
+            save_every: Can be an int or a tuple (iterations, 'iterations')
+            to_directory: Directory to save checkpoints
+        """
+        logger.info(f"Setting save_every with value: {save_every} (type: {type(save_every)})")
+        
+        if isinstance(save_every, tuple):
+            # Handle tuple case (iterations, 'iterations')
+            try:
+                self.save_every_n = save_every[0]
+                logger.info(f"Set self.save_every_n = {self.save_every_n} from tuple[0]")
+            except (IndexError, TypeError) as e:
+                logger.error(f"Error extracting value from save_every tuple: {e}")
+                # Use default as fallback
+                self.save_every_n = 1000
+                logger.info(f"Using default save_every_n = {self.save_every_n}")
+        else:
+            # Handle integer or other types
+            try:
+                self.save_every_n = int(save_every)
+                logger.info(f"Set self.save_every_n = {self.save_every_n} from direct value")
+            except (ValueError, TypeError) as e:
+                logger.error(f"Error converting save_every to int: {e}")
+                # Use default as fallback
+                self.save_every_n = 1000
+                logger.info(f"Using default save_every_n = {self.save_every_n}")
+        
         self.save_dir = to_directory
-        os.makedirs(self.save_dir, exist_ok=True)
+        if to_directory:
+            os.makedirs(self.save_dir, exist_ok=True)
         return self
     
     def set_max_num_epochs(self, epochs):
@@ -213,6 +312,59 @@ class ModelTrainer:
                 inputs = batch.to(self.device)
                 targets = inputs  # For autoencoder-like models
             
+            # Handle contrastive data format if needed (reshape tensors)
+            if len(inputs.shape) > 5:  # If contrastive data format with extra dimensions
+                # Try to adapt the shape - reshape to standard 5D format
+                # For contrastive format [B, 2, C, D, H, W] reshape to [B*2, C, D, H, W]
+                if inputs.shape[1] == 2:  # Check if it has contrastive pairs dimension
+                    batch_size = inputs.shape[0]
+                    inputs = inputs.view(batch_size * 2, *inputs.shape[2:])
+                    if not isinstance(targets, list) and len(targets.shape) > 4:
+                        targets = targets.view(batch_size * 2, *targets.shape[2:])
+                # For other unusual formats, try to infer the correct reshape
+                elif len(inputs.shape) == 6:
+                    logger.info(f"Unusual input shape: {inputs.shape}, attempting reshape")
+                    # Try to reshape to [B, C, D, H, W]
+                    inputs = inputs.view(inputs.shape[0], inputs.shape[2], inputs.shape[3], 
+                                        inputs.shape[4], inputs.shape[5])
+            
+            # Special handling for 3D inputs with small depth dimension
+            # MONAI UNet may have issues with very small depth dimensions (like 5)
+            # We'll add padding to ensure depth is at least 8 (power of 2)
+            if len(inputs.shape) == 5 and inputs.shape[2] < 8:
+                logger.info(f"Small depth dimension detected: {inputs.shape[2]}, padding to 8")
+                # Calculate padding needed
+                pad_size = 8 - inputs.shape[2]
+                padding = (0, 0, 0, 0, 0, pad_size)  # Padding format: (left, right, top, bottom, front, back)
+                # Apply padding
+                inputs = torch.nn.functional.pad(inputs, padding, mode='constant', value=0)
+                if not isinstance(targets, list) and len(targets.shape) == 5:
+                    targets = torch.nn.functional.pad(targets, padding, mode='constant', value=0)
+            
+            # Normalize target to [0,1] range for BCELoss
+            if not isinstance(targets, list):
+                # Convert to float if needed
+                if not torch.is_floating_point(targets):
+                    logger.info(f"Converting target dtype from {targets.dtype} to float")
+                    targets = targets.float()
+                
+                # Check if normalization is needed
+                if targets.min() < 0 or targets.max() > 1:
+                    logger.info(f"Normalizing targets from range [{targets.min().item():.4f}, {targets.max().item():.4f}] to [0,1]")
+                    # Apply min-max normalization
+                    if targets.max() > targets.min():  # Avoid division by zero
+                        targets = (targets - targets.min()) / (targets.max() - targets.min())
+                    else:
+                        # If all values are the same, set to either 0 or 1 based on value
+                        targets = (targets > 0).float()
+            
+            # Log the actual shapes after reshape for debugging
+            logger.info(f"Input shape after processing: {inputs.shape}")
+            if not isinstance(targets, list):
+                logger.info(f"Target shape after processing: {targets.shape}")
+                # Log target value range
+                logger.info(f"Target value range: [{targets.min().item():.4f}, {targets.max().item():.4f}]")
+            
             # Zero the parameter gradients
             self.optimizer.zero_grad()
             
@@ -263,6 +415,52 @@ class ModelTrainer:
                     inputs = batch.to(self.device)
                     targets = inputs  # For autoencoder-like models
                 
+                # Handle contrastive data format if needed (reshape tensors)
+                if len(inputs.shape) > 5:  # If contrastive data format with extra dimensions
+                    # Try to adapt the shape - reshape to standard 5D format
+                    # For contrastive format [B, 2, C, D, H, W] reshape to [B*2, C, D, H, W]
+                    if inputs.shape[1] == 2:  # Check if it has contrastive pairs dimension
+                        batch_size = inputs.shape[0]
+                        inputs = inputs.view(batch_size * 2, *inputs.shape[2:])
+                        if not isinstance(targets, list) and len(targets.shape) > 4:
+                            targets = targets.view(batch_size * 2, *targets.shape[2:])
+                    # For other unusual formats, try to infer the correct reshape
+                    elif len(inputs.shape) == 6:
+                        logger.info(f"Unusual input shape: {inputs.shape}, attempting reshape")
+                        # Try to reshape to [B, C, D, H, W]
+                        inputs = inputs.view(inputs.shape[0], inputs.shape[2], inputs.shape[3], 
+                                            inputs.shape[4], inputs.shape[5])
+                
+                # Special handling for 3D inputs with small depth dimension
+                # MONAI UNet may have issues with very small depth dimensions (like 5)
+                # We'll add padding to ensure depth is at least 8 (power of 2)
+                if len(inputs.shape) == 5 and inputs.shape[2] < 8:
+                    logger.info(f"Small depth dimension detected: {inputs.shape[2]}, padding to 8")
+                    # Calculate padding needed
+                    pad_size = 8 - inputs.shape[2]
+                    padding = (0, 0, 0, 0, 0, pad_size)  # Padding format: (left, right, top, bottom, front, back)
+                    # Apply padding
+                    inputs = torch.nn.functional.pad(inputs, padding, mode='constant', value=0)
+                    if not isinstance(targets, list) and len(targets.shape) == 5:
+                        targets = torch.nn.functional.pad(targets, padding, mode='constant', value=0)
+                
+                # Normalize target to [0,1] range for BCELoss
+                if not isinstance(targets, list):
+                    # Convert to float if needed
+                    if not torch.is_floating_point(targets):
+                        logger.info(f"Converting target dtype from {targets.dtype} to float")
+                        targets = targets.float()
+                    
+                    # Check if normalization is needed
+                    if targets.min() < 0 or targets.max() > 1:
+                        logger.info(f"Normalizing validation targets from range [{targets.min().item():.4f}, {targets.max().item():.4f}] to [0,1]")
+                        # Apply min-max normalization
+                        if targets.max() > targets.min():  # Avoid division by zero
+                            targets = (targets - targets.min()) / (targets.max() - targets.min())
+                        else:
+                            # If all values are the same, set to either 0 or 1 based on value
+                            targets = (targets > 0).float()
+                
                 # Forward pass
                 outputs = self.model(inputs)
                 loss = self.validation_criterion(outputs, targets)
@@ -309,6 +507,52 @@ class ModelTrainer:
                 else:
                     inputs = batch.to(self.device)
                     targets = inputs  # For autoencoder-like models
+                
+                # Handle contrastive data format if needed (reshape tensors)
+                if len(inputs.shape) > 5:  # If contrastive data format with extra dimensions
+                    # Try to adapt the shape - reshape to standard 5D format
+                    # For contrastive format [B, 2, C, D, H, W] reshape to [B*2, C, D, H, W]
+                    if inputs.shape[1] == 2:  # Check if it has contrastive pairs dimension
+                        batch_size = inputs.shape[0]
+                        inputs = inputs.view(batch_size * 2, *inputs.shape[2:])
+                        if not isinstance(targets, list) and len(targets.shape) > 4:
+                            targets = targets.view(batch_size * 2, *targets.shape[2:])
+                    # For other unusual formats, try to infer the correct reshape
+                    elif len(inputs.shape) == 6:
+                        logger.info(f"Unusual input shape: {inputs.shape}, attempting reshape")
+                        # Try to reshape to [B, C, D, H, W]
+                        inputs = inputs.view(inputs.shape[0], inputs.shape[2], inputs.shape[3], 
+                                            inputs.shape[4], inputs.shape[5])
+                
+                # Special handling for 3D inputs with small depth dimension
+                # MONAI UNet may have issues with very small depth dimensions (like 5)
+                # We'll add padding to ensure depth is at least 8 (power of 2)
+                if len(inputs.shape) == 5 and inputs.shape[2] < 8:
+                    logger.info(f"Small depth dimension detected: {inputs.shape[2]}, padding to 8")
+                    # Calculate padding needed
+                    pad_size = 8 - inputs.shape[2]
+                    padding = (0, 0, 0, 0, 0, pad_size)  # Padding format: (left, right, top, bottom, front, back)
+                    # Apply padding
+                    inputs = torch.nn.functional.pad(inputs, padding, mode='constant', value=0)
+                    if not isinstance(targets, list) and len(targets.shape) == 5:
+                        targets = torch.nn.functional.pad(targets, padding, mode='constant', value=0)
+                
+                # Normalize target to [0,1] range for BCELoss
+                if not isinstance(targets, list):
+                    # Convert to float if needed
+                    if not torch.is_floating_point(targets):
+                        logger.info(f"Converting target dtype from {targets.dtype} to float")
+                        targets = targets.float()
+                    
+                    # Check if normalization is needed
+                    if targets.min() < 0 or targets.max() > 1:
+                        logger.info(f"Normalizing validation targets from range [{targets.min().item():.4f}, {targets.max().item():.4f}] to [0,1]")
+                        # Apply min-max normalization
+                        if targets.max() > targets.min():  # Avoid division by zero
+                            targets = (targets - targets.min()) / (targets.max() - targets.min())
+                        else:
+                            # If all values are the same, set to either 0 or 1 based on value
+                            targets = (targets > 0).float()
                 
                 # Forward pass
                 outputs = self.model(inputs)
@@ -401,8 +645,19 @@ def set_up_training(project_directory, config):
     trainer.smoothness = smoothness
     trainer.build_criterion(criterion)
     trainer.build_validation_criterion(criterion)
-    trainer.build_optimizer(**config.get('training_optimizer_kwargs', {}))
-    trainer.validate_every((100, 'iterations'), for_num_iterations=20)
+    
+    # Extract optimizer config
+    optimizer_config = config.get('training_optimizer_kwargs', {})
+    optimizer_name = optimizer_config.get('optimizer', 'Adam')
+    # Ensure optimizer_name is a string, not an integer
+    if isinstance(optimizer_name, int):
+        logger.warning(f"Found integer optimizer_name: {optimizer_name}, using 'Adam' instead")
+        optimizer_name = 'Adam'
+    optimizer_params = optimizer_config.get('optimizer_kwargs', {})
+    
+    # Build optimizer with correct parameters
+    trainer.build_optimizer(optimizer_name, **optimizer_params)
+    trainer.set_validate_every((100, 'iterations'), for_num_iterations=20)
     trainer.save_every((1000, 'iterations'), to_directory=os.path.join(project_directory, 'Weights'))
     
     # Create AutoLR equivalent
@@ -449,11 +704,15 @@ def training(project_directory, train_configuration_file,
     os.environ["CUDA_VISIBLE_DEVICES"] = devices
 
     if from_checkpoint:
-        # Create a basic trainer to load the model
-        temp_model = nn.Sequential(UNet(dimensions=3, in_channels=1, out_channels=1, channels=[32, 64, 128, 256]), nn.Sigmoid())
-        trainer = ModelTrainer(temp_model)
-        trainer = trainer.load(from_directory=os.path.join(project_directory, 'Weights'),
-                               filename='checkpoint.pytorch')
+        try:
+            # Create a basic trainer to load the model
+            temp_model = nn.Sequential(UNet(spatial_dims=3, in_channels=1, out_channels=1, channels=[32, 64, 128, 256]), nn.Sigmoid())
+            trainer = ModelTrainer(temp_model)
+            trainer = trainer.load(from_directory=os.path.join(project_directory, 'Weights'),
+                                filename='checkpoint.pytorch')
+        except Exception as e:
+            logger.error(f"Error loading checkpoint: {e}")
+            raise
     else:
         trainer = set_up_training(project_directory, config)
 

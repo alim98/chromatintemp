@@ -35,3 +35,6 @@ dependencies:
   # - vedo
   # - time
   # tensorboard
+  # pytorch-lightning
+  # z5py
+  # pybdv

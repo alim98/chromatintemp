@@ -38,3 +38,5 @@ data/*
 low_res_dataset/*
 .vscode-server/*
 .vscode/*
+*.log
+wandb_runs/*

@@ -1,0 +1,53 @@
+# Configuration for Lightning-based texture model training
+
+# Output directory configuration
+project_directory: "experiments/lightning_texture"
+use_wandb: true  # Set to false to disable wandb logging
+wandb_project: "MorphoFeatures"
+
+# Model configuration
+model_config:
+  feature_dim: 80  # Embedding dimension (80 in the paper)
+  channels: [64, 128, 256]  # Feature maps for the encoder
+
+# Training parameters
+num_epochs: 50
+use_amp: true  # Enable mixed precision training
+
+# Loss parameters
+lambda_rec: 1.0  # Weight for reconstruction loss
+temperature: 0.1  # Temperature for NT-Xent loss
+
+# Optimizer configuration
+optimizer_config:
+  lr: 0.0001  # Learning rate
+  weight_decay: 0.0001
+
+# Scheduler configuration
+scheduler_config:
+  type: "plateau"  # Options: "plateau", "cosine"
+  factor: 0.5
+  patience: 10
+
+# Data configuration
+data_config:
+  root_dir: "/path/to/data"
+  class_csv_path: "chromatin_classes_and_samples.csv"
+  box_size: [104, 104, 104]
+  input_dir: "raw"
+  target_dir: "mask"
+  use_tiff: false  # Set to true for tiff files
+
+# Loader configuration
+loader_config:
+  batch_size: 8
+  shuffle: true
+  num_workers: 4
+  drop_last: false
+
+# Validation loader configuration
+val_loader_config:
+  batch_size: 8
+  shuffle: false
+  num_workers: 4
+  drop_last: false 

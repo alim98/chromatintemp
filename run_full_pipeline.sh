@@ -4,6 +4,15 @@
 
 set -e  # Exit on error
 
+# Set up Python path for MorphoFeatures
+export PYTHONPATH=$PYTHONPATH:$(pwd):$(pwd)/MorphoFeatures
+
+# # Add a line to install MorphoFeatures if needed
+# if [ ! -d "MorphoFeatures/morphofeatures.egg-info" ]; then
+#   echo "Installing MorphoFeatures..."
+#   (cd MorphoFeatures && pip install -e .)
+# fi
+
 # ====== CONFIGURATION ======
 # Default values (can be overridden with command line arguments)
 DATA_ROOT="nuclei_sample_1a_v1"
@@ -11,7 +20,7 @@ LOW_RES_DIR="low_res_dataset"  # Added low-res dataset directory
 OUTPUT_DIR="results/morphofeatures"
 BATCH_SIZE=8
 NUM_WORKERS=4
-EPOCHS=100
+EPOCHS=1
 MODEL_TYPE="all"  # Options: nucleus, texture, shape, all
 GPU_ID=0
 PRECOMPUTED_DIR="data/mesh_cache"
@@ -113,13 +122,13 @@ mkdir -p "$OUTPUT_DIR"
 mkdir -p "$PRECOMPUTED_DIR/meshes"
 mkdir -p "$PRECOMPUTED_DIR/pointclouds"
 
-# ====== STEP 1: GENERATE MESHES IF NEEDED ======
-echo "[1/3] Generating meshes if missing..."
-python generate_meshes_if_missing.py \
-    --root-dir "$DATA_ROOT" \
-    --class-csv "chromatin_classes_and_samples.csv" \
-    --cache-dir "$PRECOMPUTED_DIR" \
-    --num-workers "$NUM_WORKERS"
+# # ====== STEP 1: GENERATE MESHES IF NEEDED ======
+# echo "[1/3] Generating meshes if missing..."
+# python generate_meshes_if_missing.py \
+#     --root-dir "$DATA_ROOT" \
+#     --class-csv "chromatin_classes_and_samples.csv" \
+#     --cache-dir "$PRECOMPUTED_DIR" \
+#     --num-workers "$NUM_WORKERS"
 
 # ====== STEP 2: TRAIN MODELS ======
 echo "[2/3] Training models..."
@@ -133,29 +142,17 @@ fi
 # Run appropriate training based on model type
 case $MODEL_TYPE in
     nucleus)
-        python train_morphofeatures_models.py \
-            --data-root "$DATA_ROOT" \
-            --low-res-dir "$LOW_RES_DIR" \
-            --output-dir "$OUTPUT_DIR" \
-            --model-type nucleus \
-            --batch-size "$BATCH_SIZE" \
-            --num-workers "$NUM_WORKERS" \
-            --epochs "$EPOCHS" \
-            --gpu-id "$GPU_ID" \
-            --precomputed-dir "$PRECOMPUTED_DIR" \
-            $WANDB_FLAG
+        echo "WARNING: Nucleus model training from command line is not implemented."
+        echo "Consider using 'shape' or 'texture' model types, or 'all' for both."
+        exit 1
         ;;
     texture)
         python train_texture_with_morphofeatures.py \
-            --data-root "$DATA_ROOT" \
-            --low-res-dir "$LOW_RES_DIR" \
-            --output-dir "$OUTPUT_DIR" \
-            --batch-size "$BATCH_SIZE" \
-            --num-workers "$NUM_WORKERS" \
-            --epochs "$EPOCHS" \
-            --gpu-id "$GPU_ID" \
-            --precomputed-dir "$PRECOMPUTED_DIR" \
-            $WANDB_FLAG
+            --project_dir "$OUTPUT_DIR" \
+            --texture_type "coarse" \
+            --config "configs/lowres_texture_config.yaml" \
+            --devices "$GPU_ID" \
+            --from_checkpoint 0
         ;;
     shape)
         python train_morphofeatures_models.py \
@@ -186,28 +183,11 @@ case $MODEL_TYPE in
             
         # Then train texture model
         python train_texture_with_morphofeatures.py \
-            --data-root "$DATA_ROOT" \
-            --low-res-dir "$LOW_RES_DIR" \
-            --output-dir "$OUTPUT_DIR" \
-            --batch-size "$BATCH_SIZE" \
-            --num-workers "$NUM_WORKERS" \
-            --epochs "$EPOCHS" \
-            --gpu-id "$GPU_ID" \
-            --precomputed-dir "$PRECOMPUTED_DIR" \
-            $WANDB_FLAG
-            
-        # Finally train nucleus model (combined)
-        python train_morphofeatures_models.py \
-            --data-root "$DATA_ROOT" \
-            --low-res-dir "$LOW_RES_DIR" \
-            --output-dir "$OUTPUT_DIR" \
-            --model-type nucleus \
-            --batch-size "$BATCH_SIZE" \
-            --num-workers "$NUM_WORKERS" \
-            --epochs "$EPOCHS" \
-            --gpu-id "$GPU_ID" \
-            --precomputed-dir "$PRECOMPUTED_DIR" \
-            $WANDB_FLAG
+            --project_dir "$OUTPUT_DIR" \
+            --texture_type "coarse" \
+            --config "configs/lowres_texture_config.yaml" \
+            --devices "$GPU_ID" \
+            --from_checkpoint 0
         ;;
     *)
         echo "Unknown model type: $MODEL_TYPE"

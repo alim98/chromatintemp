@@ -1,0 +1,51 @@
+{
+  "os": "Linux-5.15.0-1083-aws-x86_64-with-glibc2.10",
+  "python": "CPython 3.8.12",
+  "startedAt": "2025-05-19T08:08:25.596106Z",
+  "args": [
+    "--data-root",
+    "high_res_dataset2",
+    "--low-res-dir",
+    "low_res_dataset2",
+    "--output-dir",
+    "results/test_run",
+    "--model-type",
+    "shape",
+    "--batch-size",
+    "8",
+    "--num-workers",
+    "4",
+    "--epochs",
+    "1",
+    "--gpu-id",
+    "0",
+    "--precomputed-dir",
+    "data/mesh_cache",
+    "--use-wandb"
+  ],
+  "program": "train_morphofeatures_models.py",
+  "codePath": "train_morphofeatures_models.py",
+  "git": {
+    "commit": "a685afc05d7083c80bef4f03db6972c9f00de31a"
+  },
+  "email": "realalimikaeili@gmail.com",
+  "root": "wandb_runs/20250519_080825",
+  "host": "ip-10-192-11-66",
+  "executable": "/home/zeus/miniconda3/envs/cloudspace/bin/python",
+  "codePathLocal": "train_morphofeatures_models.py",
+  "cpu_count": 2,
+  "cpu_count_logical": 4,
+  "disk": {
+    "/": {
+      "total": "416055988224",
+      "used": "110981496832"
+    }
+  },
+  "memory": {
+    "total": "16455843840"
+  },
+  "cpu": {
+    "count": 2,
+    "countLogical": 4
+  }
+}

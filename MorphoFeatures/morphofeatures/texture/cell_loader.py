@@ -3,17 +3,26 @@ import numpy as np
 import pandas as pd
 import z5py
 import torch
+import yaml
 from torch.utils.data.dataloader import DataLoader
-
-from inferno.io.transform import Compose
-from inferno.io.transform.generic import NormalizeRange, Cast, AsTorchBatch
-from inferno.io.transform.volume import CropPad2Size, VolumeRandomCrop, RandomRot903D
-from inferno.io.transform.image import ElasticTransform
-from inferno.utils.io_utils import yaml2dict
+from monai.transforms import (
+    Compose, SpatialPad, RandSpatialCrop, RandRotate90, Rand3DElastic,
+    EnsureType, ScaleIntensityRange
+)
 
 from pybdv.metadata import get_data_path
 
-from cell_dset import RawAEContrCellDataset, TextPatchContrCellDataset
+# Try different import methods
+try:
+    # Try relative import first
+    from .cell_dset import RawAEContrCellDataset, TextPatchContrCellDataset 
+except ImportError:
+    try:
+        # Try absolute import
+        from morphofeatures.texture.cell_dset import RawAEContrCellDataset, TextPatchContrCellDataset
+    except ImportError:
+        # Fallback to direct import
+        from cell_dset import RawAEContrCellDataset, TextPatchContrCellDataset
 
 
 def get_train_val_split(labels, split=0.2, r_seed=None):
@@ -24,27 +33,64 @@ def get_train_val_split(labels, split=0.2, r_seed=None):
 
 
 def get_transforms(transform_config):
-    order = 3
-    transforms = Compose()
+    """Build a MONAI transform pipeline from config"""
+    transforms = []
+    
+    # Handle crop_pad_to_size (CropPad2Size replacement)
     if transform_config.get('crop_pad_to_size'):
-        crop_pad_to_size = transform_config.get('crop_pad_to_size')
-        transforms.add(CropPad2Size(**crop_pad_to_size))
+        crop_pad_config = transform_config.get('crop_pad_to_size')
+        size = crop_pad_config.get('size')
+        mode = crop_pad_config.get('mode', 'constant')
+        transforms.append(SpatialPad(spatial_size=size, mode=mode))
+    
+    # Handle random_crop (VolumeRandomCrop replacement)
     if transform_config.get('random_crop'):
-        random_crop = transform_config.get('random_crop')
-        transforms.add(VolumeRandomCrop(**random_crop))
+        random_crop_config = transform_config.get('random_crop')
+        size = random_crop_config.get('size')
+        transforms.append(RandSpatialCrop(roi_size=size, random_center=True, random_size=False))
+    
+    # Handle cast (Cast replacement + ensure tensor)
     if transform_config.get('cast'):
-        transforms.add(Cast('float32'))
+        transforms.append(EnsureType(dtype=torch.float32, track_meta=False))
+    
+    # Handle normalize_range (NormalizeRange replacement)
     if transform_config.get('normalize_range'):
-        normalize_range_config = transform_config.get('normalize_range')
-        transforms.add(NormalizeRange(**normalize_range_config))
+        normalize_config = transform_config.get('normalize_range')
+        min_val = normalize_config.get('min_val', 0)
+        max_val = normalize_config.get('max_val', 1)
+        transforms.append(ScaleIntensityRange(a_min=min_val, a_max=max_val, b_min=0.0, b_max=1.0, clip=True))
+    
+    # Handle rotate90 (RandomRot903D replacement)
     if transform_config.get('rotate90'):
-        transforms.add(RandomRot903D())
+        transforms.append(RandRotate90(prob=0.5, spatial_axes=[0, 1, 2]))
+    
+    # Handle elastic_transform (ElasticTransform replacement)
     if transform_config.get('elastic_transform'):
         elastic_config = transform_config.get('elastic_transform')
-        transforms.add(ElasticTransform(order=order, **elastic_config))
-    if transform_config.get('torch_batch'):
-        transforms.add(AsTorchBatch(3))
-    return transforms
+        
+        # Get parameters with appropriate defaults
+        sigma_range = elastic_config.get('sigma_range', (5, 7))
+        if not isinstance(sigma_range, tuple):
+            sigma_range = (sigma_range, sigma_range)
+            
+        magnitude_range = elastic_config.get('magnitude_range', (50, 150))
+        if not isinstance(magnitude_range, tuple):
+            magnitude_range = (magnitude_range, magnitude_range)
+        
+        transforms.append(Rand3DElastic(
+            sigma_range=sigma_range,
+            magnitude_range=magnitude_range,
+            prob=1.0,
+            rotate_range=None,
+            translate_range=None,
+            scale_range=None,
+            mode="bilinear",
+            padding_mode="zeros"
+        ))
+    
+    # MONAI returns tensors by default, so we don't need AsTorchBatch
+    
+    return Compose(transforms)
 
 
 def collate_contrastive(batch):
@@ -58,7 +104,10 @@ def collate_contrastive(batch):
 
 class CellLoaders(object):
     def __init__(self, configuration_file):
-        self.config = yaml2dict(configuration_file)
+        # Replace yaml2dict with native yaml.safe_load
+        with open(configuration_file, 'r') as f:
+            self.config = yaml.safe_load(f)
+        
         data_config = self.config.get('data_config')
 
         self.PATH = "/scratch/zinchenk/cell_match/data/platy_data"
