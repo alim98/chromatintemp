@@ -1,6 +1,6 @@
 # Configuration for training the high-resolution texture model
 project_directory: "experiments/highres_texture_model"
-device: "cpu"  # Use "cuda" if CUDA is available
+device: "cuda"  # Use "cuda" if CUDA is available
 
 # Training configuration
 model_name: "UNet3D"  # Model type from neurofire.models

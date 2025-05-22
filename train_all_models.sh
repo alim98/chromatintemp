@@ -3,7 +3,7 @@
 
 # Default values
 BATCH_SIZE=2
-EPOCHS=50
+EPOCHS=10
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do

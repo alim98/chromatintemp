@@ -315,13 +315,6 @@ class TextureModelTrainer:
         if 'f_maps' in self.config.get('model_kwargs', {}):
             model_config['feature_dim'] = self.config.get('model_kwargs', {}).get('out_channels', 80)
         
-        # Extract loss configuration parameters
-        loss_config = self.config.get('loss_config', {})
-        lambda_nt_xent = self.config.get('lambda_nt_xent', 1.0)
-        lambda_mse = self.config.get('lambda_mse', 0.5)
-        lambda_reg = self.config.get('lambda_reg', 0.1)
-        temperature = self.config.get('temperature', 0.1)
-        
         # Create a copy of the config with updated format for Lightning
         lightning_config = {
             'model_config': model_config,
@@ -334,20 +327,13 @@ class TextureModelTrainer:
                 'factor': 0.95,
                 'patience': 5
             },
-            # Loss configuration for NT-Xent + MSE + regularization
-            'loss_config': {
-                'type': 'morphofeatures',
-                'temperature': temperature,
-                'lambda_ae': lambda_mse,
-                'lambda_norm': lambda_reg
-            },
-            'temperature': temperature,
-            'lambda_rec': lambda_mse
+            'lambda_rec': self.config.get('lambda_rec', 1.0),
+            'temperature': self.config.get('temperature', 0.1)
         }
         
         # Create Lightning model
         self.model = TextureNet(lightning_config)
-        logger.info(f"Created TextureNet Lightning model with MorphoFeaturesLoss (NT-Xent={lambda_nt_xent}, MSE={lambda_mse}, Reg={lambda_reg})")
+        logger.info("Created TextureNet Lightning model")
         
         # Create Trainer
         self.trainer = None  # Will be created after dataloaders are set up
@@ -472,93 +458,19 @@ class TextureModelTrainer:
             pl.callbacks.LearningRateMonitor(logging_interval='epoch')
         ]
         
-        # Add detailed loss logging callback
-        class DetailedLossLogger(pl.Callback):
-            def __init__(self, use_wandb=False):
-                super().__init__()
-                self.use_wandb = use_wandb
-                
-            def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
-                # Log component losses if they're available in the output
-                if isinstance(outputs, dict) and 'loss_components' in outputs:
-                    components = outputs['loss_components']
-                    for name, value in components.items():
-                        # Log to progress bar for important components
-                        if name in ['nt_xent', 'recon', 'reg']:
-                            trainer.logger.log_metrics({f"train/loss_{name}": value}, step=trainer.global_step)
-                        
-                        # Log to wandb if enabled
-                        if self.use_wandb:
-                            try:
-                                import wandb
-                                wandb.log({f"train/loss_{name}": value}, step=trainer.global_step)
-                            except Exception as e:
-                                pass
-            
-            def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
-                # Log component losses if they're available in the output
-                if isinstance(outputs, dict) and 'loss_components' in outputs:
-                    components = outputs['loss_components']
-                    for name, value in components.items():
-                        # Log to progress bar for important components
-                        if name in ['nt_xent', 'recon', 'reg']:
-                            trainer.logger.log_metrics({f"val/loss_{name}": value}, step=trainer.global_step)
-                        
-                        # Log to wandb if enabled
-                        if self.use_wandb:
-                            try:
-                                import wandb
-                                wandb.log({f"val/loss_{name}": value}, step=trainer.global_step)
-                            except Exception as e:
-                                pass
-        
-        # Add the detailed loss logger
-        detailed_loss_logger = DetailedLossLogger(use_wandb=self.config.get('use_wandb', False))
-        callbacks.append(detailed_loss_logger)
-        
         # Configure logger
         loggers = []
         if self.config.get('use_wandb', False) and self.wandb_run is not None:
             try:
                 import wandb
                 from pytorch_lightning.loggers import WandbLogger
-                
-                # Create custom tags and config for better organization
-                tags = [self.model_type, "texture", "contrastive"]
-                if self.config.get('experiment_name'):
-                    tags.append(self.config.get('experiment_name'))
-                
-                # Extract configuration for wandb
-                wandb_config = {
-                    "model_type": self.model_type,
-                    "learning_rate": self.config.get('optimizer_config', {}).get('lr', 1e-4),
-                    "weight_decay": self.config.get('optimizer_config', {}).get('weight_decay', 1e-4),
-                    "batch_size": self.config.get('loader_config', {}).get('batch_size', 4),
-                    "epochs": self.config.get('num_epochs', 50),
-                    "architecture": "TextureNet_Lightning",
-                    "loss_config": self.config.get('loss_config', {}),
-                    "dataset": self.config.get('data_config', {}).get('root_dir', '')
-                }
-                
-                # Set up logging of gradients and parameters
-                wandb.watch(self.model, log="all", log_freq=10)
-                
-                # Create the wandb logger
                 wandb_logger = WandbLogger(
                     project=self.config.get('wandb_project', 'MorphoFeatures'),
                     name=f"{self.model_type}_texture",
-                    tags=tags,
-                    config=wandb_config,
                     log_model=True,
                     save_dir=os.path.join(self.project_dir, 'logs')
                 )
-                
-                # Add model graph visualization
-                if hasattr(self.model, 'example_input_array'):
-                    wandb_logger.watch(self.model, log_freq=100)
-                    
                 loggers.append(wandb_logger)
-                logger.info(f"Initialized WandbLogger for {self.model_type} texture model")
             except Exception as e:
                 logger.warning(f"Could not initialize WandbLogger: {e}")
         
@@ -569,15 +481,6 @@ class TextureModelTrainer:
             name=f"{self.model_type}_texture"
         )
         loggers.append(tb_logger)
-        
-        # Add early stopping
-        early_stop_callback = pl.callbacks.EarlyStopping(
-            monitor='val_loss',
-            patience=20,
-            verbose=True,
-            mode='min'
-        )
-        callbacks.append(early_stop_callback)
         
         # Create the trainer
         self.trainer = pl.Trainer(
@@ -601,65 +504,8 @@ class TextureModelTrainer:
             if self.trainer is None:
                 self._setup_trainer()
                 
-            # Set up additional wandb logging for metrics that Lightning might not capture
-            if self.config.get('use_wandb', False) and self.wandb_run is not None:
-                # Create a callback to log after each epoch
-                class WandbMetricsLogger(pl.Callback):
-                    def on_train_epoch_end(self, trainer, pl_module):
-                        if hasattr(trainer, 'callback_metrics'):
-                            try:
-                                import wandb
-                                # Log all available metrics
-                                metrics = {f"train/{k}": v for k, v in trainer.callback_metrics.items() 
-                                          if not k.startswith('val_')}
-                                wandb.log(metrics, step=trainer.global_step)
-                            except Exception as e:
-                                logger.warning(f"Wandb training metrics logging error: {e}")
-                    
-                    def on_validation_epoch_end(self, trainer, pl_module):
-                        if hasattr(trainer, 'callback_metrics'):
-                            try:
-                                import wandb
-                                # Log all available metrics
-                                metrics = {f"val/{k}": v for k, v in trainer.callback_metrics.items() 
-                                          if k.startswith('val_')}
-                                wandb.log(metrics, step=trainer.global_step)
-                                
-                                # Log learning rate
-                                if hasattr(trainer, 'optimizers') and trainer.optimizers:
-                                    for i, optimizer in enumerate(trainer.optimizers):
-                                        for param_group in optimizer.param_groups:
-                                            wandb.log({f"lr/group_{i}": param_group['lr']}, 
-                                                     step=trainer.global_step)
-                            except Exception as e:
-                                logger.warning(f"Wandb validation metrics logging error: {e}")
-                
-                # Add the callback to the trainer
-                self.trainer.callbacks.append(WandbMetricsLogger())
-                logger.info("Added wandb metrics logging callback to trainer")
-                
             # Train the model
             self.trainer.fit(self.model, self.train_loader, self.val_loader)
-            
-            # Log final best model path
-            if self.config.get('use_wandb', False) and self.wandb_run is not None:
-                try:
-                    import wandb
-                    best_model_path = self.trainer.checkpoint_callback.best_model_path
-                    wandb.log({"best_model_path": best_model_path})
-                    
-                    # Log model as an artifact
-                    artifact = wandb.Artifact(
-                        name=f"{self.model_type}_texture_model", 
-                        type="model",
-                        description=f"Best {self.model_type} texture model"
-                    )
-                    artifact.add_file(best_model_path)
-                    wandb.log_artifact(artifact)
-                    
-                    logger.info(f"Logged best model to wandb: {best_model_path}")
-                except Exception as e:
-                    logger.warning(f"Failed to log best model to wandb: {e}")
             
             logger.info(f"Training completed. Best model saved at: {self.trainer.checkpoint_callback.best_model_path}")
             
@@ -668,92 +514,92 @@ class TextureModelTrainer:
             logger.error(traceback.format_exc())
             raise
 
-# Custom 3D UNet implementation using PyTorch
-class ConvBlock(torch.nn.Module):
-    def __init__(self, in_channels, out_channels):
-        super(ConvBlock, self).__init__()
-        self.conv1 = torch.nn.Conv3d(in_channels, out_channels, kernel_size=3, padding=1)
-        self.bn1 = torch.nn.BatchNorm3d(out_channels)
-        self.conv2 = torch.nn.Conv3d(out_channels, out_channels, kernel_size=3, padding=1)
-        self.bn2 = torch.nn.BatchNorm3d(out_channels)
-        self.relu = torch.nn.ReLU(inplace=True)
+# # Custom 3D UNet implementation using PyTorch
+# class ConvBlock(torch.nn.Module):
+#     def __init__(self, in_channels, out_channels):
+#         super(ConvBlock, self).__init__()
+#         self.conv1 = torch.nn.Conv3d(in_channels, out_channels, kernel_size=3, padding=1)
+#         self.bn1 = torch.nn.BatchNorm3d(out_channels)
+#         self.conv2 = torch.nn.Conv3d(out_channels, out_channels, kernel_size=3, padding=1)
+#         self.bn2 = torch.nn.BatchNorm3d(out_channels)
+#         self.relu = torch.nn.ReLU(inplace=True)
     
-    def forward(self, x):
-        x = self.relu(self.bn1(self.conv1(x)))
-        x = self.relu(self.bn2(self.conv2(x)))
-        return x
+#     def forward(self, x):
+#         x = self.relu(self.bn1(self.conv1(x)))
+#         x = self.relu(self.bn2(self.conv2(x)))
+#         return x
 
-class DownBlock(torch.nn.Module):
-    def __init__(self, in_channels, out_channels):
-        super(DownBlock, self).__init__()
-        self.maxpool = torch.nn.MaxPool3d(kernel_size=2, stride=2)
-        self.conv_block = ConvBlock(in_channels, out_channels)
+# class DownBlock(torch.nn.Module):
+#     def __init__(self, in_channels, out_channels):
+#         super(DownBlock, self).__init__()
+#         self.maxpool = torch.nn.MaxPool3d(kernel_size=2, stride=2)
+#         self.conv_block = ConvBlock(in_channels, out_channels)
     
-    def forward(self, x):
-        x = self.maxpool(x)
-        x = self.conv_block(x)
-        return x
+#     def forward(self, x):
+#         x = self.maxpool(x)
+#         x = self.conv_block(x)
+#         return x
 
-class UpBlock(torch.nn.Module):
-    def __init__(self, in_channels, out_channels):
-        super(UpBlock, self).__init__()
-        self.upconv = torch.nn.ConvTranspose3d(in_channels, out_channels, kernel_size=2, stride=2)
-        self.conv_block = ConvBlock(in_channels, out_channels)
+# class UpBlock(torch.nn.Module):
+#     def __init__(self, in_channels, out_channels):
+#         super(UpBlock, self).__init__()
+#         self.upconv = torch.nn.ConvTranspose3d(in_channels, out_channels, kernel_size=2, stride=2)
+#         self.conv_block = ConvBlock(in_channels, out_channels)
     
-    def forward(self, x, skip):
-        x = self.upconv(x)
-        x = torch.cat([x, skip], dim=1)
-        x = self.conv_block(x)
-        return x
+#     def forward(self, x, skip):
+#         x = self.upconv(x)
+#         x = torch.cat([x, skip], dim=1)
+#         x = self.conv_block(x)
+#         return x
 
-class UNet3D(torch.nn.Module):
-    def __init__(self, in_channels=1, out_channels=1, f_maps=[32, 64, 128, 256], final_sigmoid=True):
-        super(UNet3D, self).__init__()
+# class UNet3D(torch.nn.Module):
+#     def __init__(self, in_channels=1, out_channels=1, f_maps=[32, 64, 128, 256], final_sigmoid=True):
+#         super(UNet3D, self).__init__()
         
-        self.in_channels = in_channels
-        self.out_channels = out_channels
-        self.f_maps = f_maps
-        self.final_sigmoid = final_sigmoid
+#         self.in_channels = in_channels
+#         self.out_channels = out_channels
+#         self.f_maps = f_maps
+#         self.final_sigmoid = final_sigmoid
         
-        # Initial convolution block
-        self.inc = ConvBlock(in_channels, f_maps[0])
+#         # Initial convolution block
+#         self.inc = ConvBlock(in_channels, f_maps[0])
         
-        # Down path
-        self.down1 = DownBlock(f_maps[0], f_maps[1])
-        self.down2 = DownBlock(f_maps[1], f_maps[2])
-        self.down3 = DownBlock(f_maps[2], f_maps[3])
+#         # Down path
+#         self.down1 = DownBlock(f_maps[0], f_maps[1])
+#         self.down2 = DownBlock(f_maps[1], f_maps[2])
+#         self.down3 = DownBlock(f_maps[2], f_maps[3])
         
-        # Up path
-        self.up1 = UpBlock(f_maps[3], f_maps[2])
-        self.up2 = UpBlock(f_maps[2], f_maps[1])
-        self.up3 = UpBlock(f_maps[1], f_maps[0])
+#         # Up path
+#         self.up1 = UpBlock(f_maps[3], f_maps[2])
+#         self.up2 = UpBlock(f_maps[2], f_maps[1])
+#         self.up3 = UpBlock(f_maps[1], f_maps[0])
         
-        # Final convolution
-        self.outc = torch.nn.Conv3d(f_maps[0], out_channels, kernel_size=1)
+#         # Final convolution
+#         self.outc = torch.nn.Conv3d(f_maps[0], out_channels, kernel_size=1)
         
-        # Final activation
-        self.sigmoid = torch.nn.Sigmoid()
+#         # Final activation
+#         self.sigmoid = torch.nn.Sigmoid()
     
-    def forward(self, x):
-        # Down path
-        x1 = self.inc(x)
-        x2 = self.down1(x1)
-        x3 = self.down2(x2)
-        x4 = self.down3(x3)
+#     def forward(self, x):
+#         # Down path
+#         x1 = self.inc(x)
+#         x2 = self.down1(x1)
+#         x3 = self.down2(x2)
+#         x4 = self.down3(x3)
         
-        # Up path
-        x = self.up1(x4, x3)
-        x = self.up2(x, x2)
-        x = self.up3(x, x1)
+#         # Up path
+#         x = self.up1(x4, x3)
+#         x = self.up2(x, x2)
+#         x = self.up3(x, x1)
         
-        # Final convolution
-        x = self.outc(x)
+#         # Final convolution
+#         x = self.outc(x)
         
-        # Apply sigmoid if required
-        if self.final_sigmoid:
-            x = self.sigmoid(x)
+#         # Apply sigmoid if required
+#         if self.final_sigmoid:
+#             x = self.sigmoid(x)
         
-        return x
+#         return x
 
 def train_shape_model(config_path):
     """
@@ -787,122 +633,34 @@ def train_shape_model(config_path):
     
     return trainer
 
-def train_texture_model(config_path, model_type='lowres'):
-    """
-    Train a texture model (low-resolution or high-resolution).
+# def train_texture_model(config_path, model_type='lowres'):
+#     """
+#     Train a texture model (low-resolution or high-resolution).
     
-    Args:
-        config_path (str): Path to YAML configuration file
-        model_type (str): Type of texture model to train ('lowres' or 'highres')
-    """
-    logger.info(f"Loading configuration from {config_path}")
-    with open(config_path, 'r') as f:
-        config = yaml.safe_load(f)
+#     Args:
+#         config_path (str): Path to YAML configuration file
+#         model_type (str): Type of texture model to train ('lowres' or 'highres')
+#     """
+#     logger.info(f"Loading configuration from {config_path}")
+#     with open(config_path, 'r') as f:
+#         config = yaml.safe_load(f)
     
-    # Set model type in config
-    config['model_type'] = model_type
+#     # Set model type in config
+#     config['model_type'] = model_type
     
-    # Create the directory for experiments if it doesn't exist
-    if 'project_directory' in config:
-        os.makedirs(config['project_directory'], exist_ok=True)
+#     # Create the directory for experiments if it doesn't exist
+#     if 'project_directory' in config:
+#         os.makedirs(config['project_directory'], exist_ok=True)
     
-    # Train a texture model using Lightning
-    logger.info(f"Creating {model_type} TextureModelTrainer with Lightning")
-    trainer = TextureModelTrainer(config, model_type=model_type)
+#     # Train a texture model using Lightning
+#     logger.info(f"Creating {model_type} TextureModelTrainer with Lightning")
+#     trainer = TextureModelTrainer(config, model_type=model_type)
     
-    # Train the model
-    logger.info("Starting training")
-    trainer.train()
+#     # Train the model
+#     logger.info("Starting training")
+#     trainer.train()
     
-    return trainer
-
-def train_texture_model_from_config(config, model_type='lowres'):
-    """
-    Train a texture model using TextureModelTrainer directly from a config dictionary.
-    
-    Args:
-        config (dict): Configuration dictionary
-        model_type (str): Type of texture model to train ('lowres' or 'highres')
-    """
-    # Set model type in config
-    config['model_type'] = model_type
-    
-    # Create the directory for experiments if it doesn't exist
-    if 'project_directory' in config:
-        os.makedirs(config['project_directory'], exist_ok=True)
-    
-    # Configure wandb if requested
-    wandb_run = None
-    if config.get('use_wandb', False):
-        try:
-            import wandb
-            if not wandb.api.api_key:
-                # Try to login with the provided key or use environment variable
-                wandb_key = os.environ.get('WANDB_API_KEY', "9de783cdb1f22a4b8f97f7e05e4e057f668e0cfe")
-                wandb.login(key=wandb_key)
-            
-            # Define a more descriptive run name
-            run_name = config.get('wandb_run_name', f"{model_type}_texture_model")
-            if 'experiment_name' in config:
-                run_name = f"{run_name}_{config['experiment_name']}"
-                
-            # Create tags for better organization
-            tags = [model_type, "texture"]
-            # Add any additional tags from config
-            if config.get('tags'):
-                tags.extend(config.get('tags'))
-                
-            # Add timestamp to run name for uniqueness
-            timestamp = time.strftime('%Y%m%d_%H%M%S')
-            run_name = f"{run_name}_{timestamp}"
-            
-            # Start wandb run
-            wandb_run = wandb.init(
-                project=config.get('wandb_project', 'MorphoFeatures'),
-                name=run_name,
-                tags=tags,
-                config=config,
-                dir=os.environ.get("WANDB_DIR", None),
-                group=config.get('wandb_group', None)
-            )
-            
-            logger.info(f"Initialized wandb for {model_type} texture model logging: {run_name}")
-            
-            # Store the run in config for later access
-            config['wandb_run'] = wandb_run
-            
-        except Exception as e:
-            logger.error(f"Failed to initialize wandb for texture model: {e}")
-            config['use_wandb'] = False
-    
-    # Train a texture model using Lightning
-    logger.info(f"Creating {model_type} TextureModelTrainer with Lightning")
-    trainer = TextureModelTrainer(config, model_type=model_type)
-    
-    # Train the model
-    logger.info("Starting training")
-    trainer.train()
-    
-    # Finalize wandb if we started it
-    if wandb_run is not None:
-        try:
-            # Log final metrics
-            best_model_path = trainer.trainer.checkpoint_callback.best_model_path
-            wandb_run.summary['best_model_path'] = best_model_path
-            wandb_run.summary['best_val_loss'] = trainer.trainer.checkpoint_callback.best_model_score.item()
-            wandb_run.summary['total_epochs'] = trainer.trainer.current_epoch
-            
-            # Add notes about the run
-            notes = f"Model type: {model_type}\n"
-            notes += f"Best validation loss: {trainer.trainer.checkpoint_callback.best_model_score.item():.6f}\n"
-            notes += f"Trained for {trainer.trainer.current_epoch} epochs\n"
-            wandb_run.notes = notes
-            
-            logger.info("Finalized wandb run with summary metrics")
-        except Exception as e:
-            logger.warning(f"Error finalizing wandb run: {e}")
-    
-    return trainer
+#     return trainer
 
 def main():
     """Main entry point for training the models."""
@@ -924,12 +682,6 @@ def main():
     parser.add_argument("--gpu-id", type=int, help="GPU ID to use")
     parser.add_argument("--precomputed-dir", type=str, help="Directory for precomputed/cached meshes")
     parser.add_argument("--use-wandb", action="store_true", help="Enable Weights & Biases logging")
-    
-    # New loss function parameters
-    parser.add_argument("--lambda-nt-xent", type=float, default=1.0, help="Weight for NT-Xent loss")
-    parser.add_argument("--lambda-mse", type=float, default=0.5, help="Weight for MSE loss")
-    parser.add_argument("--lambda-reg", type=float, default=0.1, help="Weight for regularization loss")
-    parser.add_argument("--temperature", type=float, default=0.1, help="Temperature parameter for NT-Xent loss")
     
     args = parser.parse_args()
     
@@ -986,7 +738,7 @@ def main():
                 "device": device,
                 "data": {
                     "root_dir": args.data_root,
-                    "class_csv_path": "chromatin_classes_and_samples.csv",
+                    "class_csv_path": "chromatin_classes_and_samples_full.csv",
                     "num_points": 1024,
                     "cache_dir": args.precomputed_dir,
                     "precomputed_dir": args.precomputed_dir
@@ -1051,54 +803,9 @@ def main():
             logger.info("Shape model training completed.")
         
         elif args.model_type == "nucleus":
-            # Create nucleus texture model config
-            config = {
-                "project_directory": os.path.join(args.output_dir, "nucleus_texture_model"),
-                "device": device,
-                "data_config": {
-                    "root_dir": args.data_root,
-                    "class_csv_path": os.path.join(args.data_root, "chromatin_classes_and_samples.csv"),
-                    "box_size": (104, 104, 104),
-                    "is_cytoplasm": False,
-                    "input_dir": "raw",
-                    "target_dir": "mask"
-                },
-                "loader_config": {
-                    "batch_size": args.batch_size or 4,
-                    "shuffle": True,
-                    "num_workers": args.num_workers or 4
-                },
-                "val_loader_config": {
-                    "batch_size": args.batch_size or 4,
-                    "shuffle": False,
-                    "num_workers": args.num_workers or 4
-                },
-                "model_config": {
-                    "feature_dim": 64,
-                    "in_channels": 1,
-                    "out_channels": 1,
-                    "f_maps": [32, 64, 128, 256]
-                },
-                "training_optimizer_kwargs": {
-                    "optimizer_kwargs": {
-                        "lr": 0.0001,
-                        "weight_decay": 0.0001
-                    }
-                },
-                "num_epochs": args.epochs or 50,
-                "use_wandb": args.use_wandb,
-                "wandb_project": "Chromatin",
-                "wandb_run_name": "nucleus_texture_model_training",
-                # Loss function parameters
-                "lambda_nt_xent": args.lambda_nt_xent,
-                "lambda_mse": args.lambda_mse,
-                "lambda_reg": args.lambda_reg,
-                "temperature": args.temperature
-            }
-            
-            logger.info("Training nucleus texture model with generated config.")
-            trainer = train_texture_model_from_config(config, model_type='highres')
-            logger.info("Nucleus texture model training completed.")
+            # TODO: Implement nucleus model training with command-line arguments
+            logger.error("Nucleus model training from command line is not implemented yet. Please use a config file.")
+            return 1
     
     # Train models based on provided config files (original approach)
     else:

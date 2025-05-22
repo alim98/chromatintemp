@@ -1,6 +1,6 @@
 # Configuration for training the low-resolution texture model
 project_directory: experiments/lowres_texture_model
-device: "cpu"
+device: "cuda"
 
 # Training configuration
 model_name: UNet3D
@@ -32,7 +32,7 @@ mixed_precision: 'False'
 data_config:
   # Try using a specific sample directory as root
   root_dir: low_res_dataset
-  class_csv_path: chromatin_classes_and_samples.csv  # CSV file with sample information
+  class_csv_path: chromatin_classes_and_samples_full.csv  # CSV file with sample information
   is_cytoplasm: false
   box_size: [104, 104, 104]
   split: 0.2  # 20% of data for validation

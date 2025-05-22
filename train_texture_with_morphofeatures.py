@@ -7,25 +7,20 @@ import torch.nn as nn
 import logging
 import torch
 
-# Add MorphoFeatures to the path if needed
 if not any("MorphoFeatures" in p for p in sys.path):
     sys.path.append(os.path.abspath("MorphoFeatures"))
 
-# Use try-except to handle different import scenarios
 try:
     from MorphoFeatures.morphofeatures.texture.train import create_unet_model, ModelTrainer, compile_criterion
 except ImportError:
     try:
         from morphofeatures.texture.train import create_unet_model, ModelTrainer, compile_criterion
     except ImportError:
-        print("Error: Unable to import from morphofeatures.texture.train")
-        print("Current path:", sys.path)
+
         sys.exit(1)
 
-# Import our custom dataloaders
-from dataloader.highres_contrastive_dataloader import get_highres_contrastive_loaders
-from dataloader.lowres_contrastive_dataloader import get_lowres_contrastive_loaders
-from dataloader.contrastive_transforms import collate_contrastive as custom_collate_contrastive
+from dataloader.lowres_texture_adapter import get_morphofeatures_texture_dataloader as get_lowres_texture_dataloader
+from dataloader.highres_texture_adapter import get_morphofeatures_highres_texture_dataloader as get_highres_texture_dataloader
 
 
 class CustomTextureLoader:
@@ -47,13 +42,22 @@ class CustomTextureLoader:
         self.texture_type = texture_type
         print(f"Initializing texture loader for {texture_type} texture analysis")
         
-        # Determine which loader to use based on texture type
+        # Get data configuration
+        self.data_config = self.config.get('data_config', {})
+        
         if texture_type == 'coarse':
-            self.loader_func = get_lowres_contrastive_loaders
-            self.target_size = (64, 64)
+            self.loader_func = get_lowres_texture_dataloader
+            self.box_size = self.data_config.get('box_size', [104, 104, 104])
+            self.target_size = (self.box_size[1], self.box_size[2])  # Use H,W from box_size
         else:  # 'fine'
-            self.loader_func = get_highres_contrastive_loaders
-            self.target_size = (224, 224)
+            self.loader_func = get_highres_texture_dataloader
+            self.box_size = self.data_config.get('box_size', [256, 256, 256])
+            self.target_size = (self.box_size[1], self.box_size[2])  # Use H,W from box_size
+        
+        # Debug output
+        print(f"Using box_size: {self.box_size}, target_size: {self.target_size}")
+        print(f"Data root directory: {self.data_config.get('root_dir')}")
+        print(f"Using CSV file: {self.data_config.get('class_csv_path')}")
     
     def get_train_loaders(self):
         """
@@ -62,22 +66,155 @@ class CustomTextureLoader:
         Returns:
             tuple: (train_loader, val_loader)
         """
-        data_config = self.config['data_config']
+        # Extract all relevant config values
+        root_dir = self.data_config.get('root_dir')
+        class_csv_path = self.data_config.get('class_csv_path')
+        is_cytoplasm = self.data_config.get('is_cytoplasm', False)
+        use_tiff = self.data_config.get('use_tiff', True)
+        input_dir = self.data_config.get('input_dir', 'raw')
+        target_dir = self.data_config.get('target_dir', 'mask')
         
-        loaders = self.loader_func(
-            root_dir=data_config['root_dir'],
-            batch_size=self.config['loader_config'].get('batch_size', 8),
-            shuffle=self.config['loader_config'].get('shuffle', True),
-            num_workers=self.config['loader_config'].get('num_workers', 4),
-            class_csv_path=data_config.get('class_csv_path'),
-            target_size=self.target_size,
-            z_window_size=5,  # Default, adjust based on your data
-            pin_memory=self.config['loader_config'].get('pin_memory', True),
-            debug=True  # Set to False for production
-        )
+        # Get loader configs
+        loader_config = self.config.get('loader_config', {})
+        val_loader_config = self.config.get('val_loader_config', {})
         
-        train_loader = loaders['train'] 
-        val_loader = loaders['val']
+        # Print debug info to help diagnose sample loading issues
+        print(f"Loading samples from {root_dir}")
+        print(f"Using CSV file: {class_csv_path}")
+        
+        # # List directories to verify they exist
+        # if os.path.exists(root_dir):
+        #     print(f"Root directory exists with contents: {os.listdir(root_dir)[:10]}...")
+        #     # If we expect a class structure
+        #     if self.texture_type == 'coarse':
+        #         for class_dir in os.listdir(root_dir):
+        #             class_path = os.path.join(root_dir, class_dir)
+        #             if os.path.isdir(class_path):
+        #                 sample_count = len([d for d in os.listdir(class_path) if os.path.isdir(os.path.join(class_path, d))])
+        #                 print(f"  - Class {class_dir}: {sample_count} samples")
+        # else:
+        #     print(f"WARNING: Root directory {root_dir} does not exist!")
+        
+        # Check if CSV file exists
+        if class_csv_path and os.path.exists(class_csv_path):
+            import pandas as pd
+            df = pd.read_csv(class_csv_path)
+            print(f"CSV file contains {len(df)} rows and {len(df['sample_id'].unique())} unique samples")
+            print(f"CSV columns: {df.columns.tolist()}")
+        else:
+            print(f"WARNING: CSV file {class_csv_path} does not exist or is not specified!")
+        
+        # Determine full sample set
+        if self.texture_type == 'coarse':
+            # For lowres: discover from directory structure
+            all_samples = []
+            for class_name in os.listdir(root_dir):
+                class_path = os.path.join(root_dir, class_name)
+                if os.path.isdir(class_path):
+                    for sample_id in os.listdir(class_path):
+                        sample_path = os.path.join(class_path, sample_id)
+                        raw_dir = os.path.join(sample_path, input_dir)
+                        mask_dir = os.path.join(sample_path, target_dir)
+                        if os.path.exists(raw_dir) and os.path.exists(mask_dir):
+                            all_samples.append(sample_path)
+        else:
+            # For highres: discover from CSV
+            all_samples = []
+            if class_csv_path and os.path.exists(class_csv_path):
+                import pandas as pd
+                df = pd.read_csv(class_csv_path)
+                for sample_id in df['sample_id'].unique():
+                    sample_path = os.path.join(root_dir, str(sample_id).zfill(4))
+                    raw_dir = os.path.join(sample_path, input_dir)
+                    mask_dir = os.path.join(sample_path, target_dir)
+                    if os.path.exists(raw_dir) and os.path.exists(mask_dir):
+                        all_samples.append(sample_path)
+        
+        print(f"Found {len(all_samples)} total valid samples")
+        
+        # Split samples for training (80%) and validation (20%)
+        import random
+        random.seed(42)  # For reproducibility
+        random.shuffle(all_samples)
+        split_idx = int(len(all_samples) * 0.8)
+        train_samples = all_samples[:split_idx]
+        val_samples = all_samples[split_idx:]
+        
+        print(f"Using {len(train_samples)} samples for training and {len(val_samples)} for validation")
+        
+        # Create training dataloader - use different parameters based on texture type
+        if self.texture_type == 'coarse':
+            # Use box_size for lowres
+            train_loader = self.loader_func(
+                root_dir=root_dir,
+                sample_ids=train_samples,
+                batch_size=loader_config.get('batch_size', 4),
+                shuffle=loader_config.get('shuffle', True),
+                num_workers=loader_config.get('num_workers', 0),
+                is_cytoplasm=is_cytoplasm,
+                box_size=self.box_size,
+                use_tiff=use_tiff,
+                input_dir=input_dir,
+                target_dir=target_dir
+            )
+            
+            # Create validation dataloader
+            val_loader = self.loader_func(
+                root_dir=root_dir,
+                sample_ids=val_samples,
+                batch_size=val_loader_config.get('batch_size', 4),
+                shuffle=val_loader_config.get('shuffle', False),
+                num_workers=val_loader_config.get('num_workers', 0),
+                is_cytoplasm=is_cytoplasm,
+                box_size=self.box_size,
+                use_tiff=use_tiff,
+                input_dir=input_dir,
+                target_dir=target_dir
+            )
+        else:
+            # For highres, extract just the sample_ids from the paths
+            train_sample_ids = []
+            for path in train_samples:
+                # Extract the sample ID from the path: /path/to/0001 -> "0001"
+                sample_id = os.path.basename(path)
+                train_sample_ids.append(sample_id)
+            
+            val_sample_ids = []
+            for path in val_samples:
+                sample_id = os.path.basename(path)
+                val_sample_ids.append(sample_id)
+                
+            # Debug to verify sample IDs
+            print(f"First 5 training sample IDs: {train_sample_ids[:5]}")
+            
+            # Use cube_size for highres
+            cube_size = self.box_size[0]  # Use the first dimension as cube size (they should all be equal)
+            train_loader = self.loader_func(
+                root_dir=root_dir,
+                sample_ids=train_sample_ids,  # Use just the IDs, not full paths
+                batch_size=loader_config.get('batch_size', 4),
+                shuffle=loader_config.get('shuffle', True),
+                num_workers=loader_config.get('num_workers', 0),
+                is_cytoplasm=is_cytoplasm,
+                cube_size=cube_size,  # Use cube_size instead of box_size
+                class_csv_path=class_csv_path,
+                debug=True
+            )
+            
+            # Create validation dataloader
+            val_loader = self.loader_func(
+                root_dir=root_dir,
+                sample_ids=val_sample_ids,  # Use just the IDs, not full paths
+                batch_size=val_loader_config.get('batch_size', 4),
+                shuffle=val_loader_config.get('shuffle', False),
+                num_workers=val_loader_config.get('num_workers', 0),
+                is_cytoplasm=is_cytoplasm,
+                cube_size=cube_size,  # Use cube_size instead of box_size
+                class_csv_path=class_csv_path,
+                debug=True
+            )
+        
+        print(f"Created dataloader with {len(train_loader.dataset)} training samples and {len(val_loader.dataset)} validation samples")
         
         return train_loader, val_loader
     
@@ -88,32 +225,42 @@ class CustomTextureLoader:
         Returns:
             DataLoader: Prediction dataloader
         """
-        data_config = self.config['data_config']
+        # Since we're only concerned with training for now, just return a small subset
+        # of the training data for prediction/inference
+        train_loader, _ = self.get_train_loaders()
         
-        # Create a single dataset for prediction (no contrastive pairs)
+        # Get pred loader config
+        pred_loader_config = self.config.get('pred_loader_config', {})
+        
+        # Create a new loader with prediction settings
+        root_dir = self.data_config.get('root_dir')
+        class_csv_path = self.data_config.get('class_csv_path')
+        
         if self.texture_type == 'coarse':
             from dataloader.lowres_image_dataloader import get_lowres_image_dataloader
             
             pred_loader = get_lowres_image_dataloader(
-                root_dir=data_config['root_dir'],
-                batch_size=self.config['pred_loader_config'].get('batch_size', 1),
+                root_dir=root_dir,
+                batch_size=pred_loader_config.get('batch_size', 1),
                 shuffle=False,
-                num_workers=self.config['pred_loader_config'].get('num_workers', 0),
-                class_csv_path=data_config.get('class_csv_path'),
+                num_workers=pred_loader_config.get('num_workers', 0),
+                class_csv_path=class_csv_path,
                 target_size=self.target_size,
-                pin_memory=self.config['pred_loader_config'].get('pin_memory', False)
+                z_window_size=self.box_size[0],  # Use first dimension from box_size
+                pin_memory=pred_loader_config.get('pin_memory', False)
             )
         else:
             from dataloader.highres_image_dataloader import get_highres_image_dataloader
             
             pred_loader = get_highres_image_dataloader(
-                root_dir=data_config['root_dir'],
-                batch_size=self.config['pred_loader_config'].get('batch_size', 1),
+                root_dir=root_dir,
+                batch_size=pred_loader_config.get('batch_size', 1),
                 shuffle=False,
-                num_workers=self.config['pred_loader_config'].get('num_workers', 0),
-                class_csv_path=data_config.get('class_csv_path'),
+                num_workers=pred_loader_config.get('num_workers', 0),
+                class_csv_path=class_csv_path,
                 target_size=self.target_size,
-                pin_memory=self.config['pred_loader_config'].get('pin_memory', False)
+                z_window_size=self.box_size[0],  # Use first dimension from box_size
+                pin_memory=pred_loader_config.get('pin_memory', False)
             )
         
         return pred_loader
@@ -140,7 +287,7 @@ def training(project_directory, texture_type, config_file, devices, from_checkpo
                         level=logging.INFO)
     logger = logging.getLogger(__name__)
     
-    logger.info(f"Loading config from {config_file}")
+    # logger.info(f"Loading config from {config_file}")
     
     # Set device
     logger.info(f"Using devices {devices}")
@@ -257,7 +404,7 @@ def training(project_directory, texture_type, config_file, devices, from_checkpo
     train_loader, validation_loader = loader.get_train_loaders()
     
     # Set max number of epochs
-    trainer.set_max_num_epochs(config.get('num_epochs', 10))
+    trainer.set_max_num_epochs(config.get('num_epochs', 50))
     
     # Bind loaders to trainer
     logger.info("Binding loaders to trainer")

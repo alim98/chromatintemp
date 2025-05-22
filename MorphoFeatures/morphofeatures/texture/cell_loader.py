@@ -152,10 +152,24 @@ class CellLoaders(object):
             self.other_kwargs['cell_hr_vol'] = cell_file['setup0/timepoint0/s{}'\
                                                .format(raw_level - 1)]
 
+        # Build transform pipelines
         self.transf = get_transforms(self.config.get('transforms')) \
                       if self.config.get('transforms') else None
+                      
         self.trans_sim = get_transforms(self.config.get('transforms_sim')) \
                          if self.config.get('transforms_sim') else None
+                         
+        # Ensure both transform pipelines have type conversion to float32
+        # If transforms are None, create minimal pipeline with only EnsureType
+        if self.transf is None:
+            self.transf = Compose([EnsureType(dtype=torch.float32, track_meta=False)])
+        elif not any(isinstance(t, EnsureType) for t in self.transf.transforms):
+            self.transf = Compose([*self.transf.transforms, EnsureType(dtype=torch.float32, track_meta=False)])
+            
+        if self.trans_sim is None:
+            self.trans_sim = Compose([EnsureType(dtype=torch.float32, track_meta=False)])
+        elif not any(isinstance(t, EnsureType) for t in self.trans_sim.transforms):
+            self.trans_sim = Compose([*self.trans_sim.transforms, EnsureType(dtype=torch.float32, track_meta=False)])
 
     def get_train_loaders(self):
         labels = get_train_val_split(list(self.nucl_dict.keys()),

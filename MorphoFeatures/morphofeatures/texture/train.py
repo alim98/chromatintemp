@@ -348,6 +348,11 @@ class ModelTrainer:
                     logger.info(f"Converting target dtype from {targets.dtype} to float")
                     targets = targets.float()
                 
+                # Ensure float32 type (not double/float64)
+                if targets.dtype != torch.float32:
+                    logger.info(f"Converting target dtype from {targets.dtype} to float32")
+                    targets = targets.to(torch.float32)
+                
                 # Check if normalization is needed
                 if targets.min() < 0 or targets.max() > 1:
                     logger.info(f"Normalizing targets from range [{targets.min().item():.4f}, {targets.max().item():.4f}] to [0,1]")
@@ -357,6 +362,14 @@ class ModelTrainer:
                     else:
                         # If all values are the same, set to either 0 or 1 based on value
                         targets = (targets > 0).float()
+                    
+                    # Ensure we're still float32 after normalization
+                    targets = targets.to(torch.float32)
+            
+            # Also ensure inputs are float32 before passing to model
+            if inputs.dtype != torch.float32:
+                logger.info(f"Converting input dtype from {inputs.dtype} to float32")
+                inputs = inputs.to(torch.float32)
             
             # Log the actual shapes after reshape for debugging
             logger.info(f"Input shape after processing: {inputs.shape}")
@@ -451,6 +464,11 @@ class ModelTrainer:
                         logger.info(f"Converting target dtype from {targets.dtype} to float")
                         targets = targets.float()
                     
+                    # Ensure float32 type (not double/float64)
+                    if targets.dtype != torch.float32:
+                        logger.info(f"Converting target dtype from {targets.dtype} to float32")
+                        targets = targets.to(torch.float32)
+                    
                     # Check if normalization is needed
                     if targets.min() < 0 or targets.max() > 1:
                         logger.info(f"Normalizing validation targets from range [{targets.min().item():.4f}, {targets.max().item():.4f}] to [0,1]")
@@ -460,6 +478,14 @@ class ModelTrainer:
                         else:
                             # If all values are the same, set to either 0 or 1 based on value
                             targets = (targets > 0).float()
+                    
+                    # Ensure we're still float32 after normalization
+                    targets = targets.to(torch.float32)
+                
+                # Also ensure inputs are float32 before passing to model
+                if inputs.dtype != torch.float32:
+                    logger.info(f"Converting input dtype from {inputs.dtype} to float32")
+                    inputs = inputs.to(torch.float32)
                 
                 # Forward pass
                 outputs = self.model(inputs)
@@ -544,6 +570,11 @@ class ModelTrainer:
                         logger.info(f"Converting target dtype from {targets.dtype} to float")
                         targets = targets.float()
                     
+                    # Ensure float32 type (not double/float64)
+                    if targets.dtype != torch.float32:
+                        logger.info(f"Converting target dtype from {targets.dtype} to float32")
+                        targets = targets.to(torch.float32)
+                    
                     # Check if normalization is needed
                     if targets.min() < 0 or targets.max() > 1:
                         logger.info(f"Normalizing validation targets from range [{targets.min().item():.4f}, {targets.max().item():.4f}] to [0,1]")
@@ -553,6 +584,14 @@ class ModelTrainer:
                         else:
                             # If all values are the same, set to either 0 or 1 based on value
                             targets = (targets > 0).float()
+                    
+                    # Ensure we're still float32 after normalization
+                    targets = targets.to(torch.float32)
+                
+                # Also ensure inputs are float32 before passing to model
+                if inputs.dtype != torch.float32:
+                    logger.info(f"Converting input dtype from {inputs.dtype} to float32")
+                    inputs = inputs.to(torch.float32)
                 
                 # Forward pass
                 outputs = self.model(inputs)

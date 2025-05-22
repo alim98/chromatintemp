@@ -130,13 +130,13 @@ mkdir -p "$OUTPUT_DIR"
 mkdir -p "$PRECOMPUTED_DIR/meshes"
 mkdir -p "$PRECOMPUTED_DIR/pointclouds"
 
-# # ====== STEP 1: GENERATE MESHES IF NEEDED ======
-# echo "[1/3] Generating meshes if missing..."
-# python generate_meshes_if_missing.py \
-#     --root-dir "$DATA_ROOT" \
-#     --class-csv "chromatin_classes_and_samples.csv" \
-#     --cache-dir "$PRECOMPUTED_DIR" \
-#     --num-workers "$NUM_WORKERS"
+# ====== STEP 1: GENERATE MESHES IF NEEDED ======
+echo "[1/3] Generating meshes if missing..."
+python generate_meshes_if_missing.py \
+    --root-dir "$DATA_ROOT" \
+    --class-csv "chromatin_classes_and_samples.csv" \
+    --cache-dir "$PRECOMPUTED_DIR" \
+    --num-workers "$NUM_WORKERS"
 
 # ====== STEP 2: TRAIN MODELS ======
 echo "[2/3] Training models..."
@@ -194,26 +194,26 @@ case $MODEL_TYPE in
             $WANDB_FLAG
         ;;
     all)
-        # Train shape model first
-        python train_morphofeatures_models.py \
-            --data-root "$DATA_ROOT" \
-            --low-res-dir "$LOW_RES_DIR" \
-            --output-dir "$OUTPUT_DIR" \
-            --model-type shape \
-            --batch-size "$BATCH_SIZE" \
-            --num-workers "$NUM_WORKERS" \
-            --epochs "$EPOCHS" \
-            --gpu-id "$GPU_ID" \
-            --precomputed-dir "$PRECOMPUTED_DIR" \
-            $WANDB_FLAG
+        # # Train shape model first
+        # python train_morphofeatures_models.py \
+        #     --data-root "$DATA_ROOT" \
+        #     --low-res-dir "$LOW_RES_DIR" \
+        #     --output-dir "$OUTPUT_DIR" \
+        #     --model-type shape \
+        #     --batch-size "$BATCH_SIZE" \
+        #     --num-workers "$NUM_WORKERS" \
+        #     --epochs "$EPOCHS" \
+        #     --gpu-id "$GPU_ID" \
+        #     --precomputed-dir "$PRECOMPUTED_DIR" \
+        #     $WANDB_FLAG
             
-        # Then train low-res texture model
-        python train_texture_with_morphofeatures.py \
-            --project_dir "$OUTPUT_DIR" \
-            --texture_type "coarse" \
-            --config "configs/lowres_texture_config.yaml" \
-            --devices "$GPU_ID" \
-            --from_checkpoint 0
+        # # Then train low-res texture model
+        # python train_texture_with_morphofeatures.py \
+        #     --project_dir "$OUTPUT_DIR" \
+        #     --texture_type "coarse" \
+        #     --config "configs/lowres_texture_config.yaml" \
+        #     --devices "$GPU_ID" \
+        #     --from_checkpoint 0
             
         # Finally train high-res texture model
         python train_texture_with_morphofeatures.py \

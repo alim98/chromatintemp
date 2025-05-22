@@ -13,47 +13,81 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dataloader.highres_image_dataloader import get_highres_image_dataloader
 
 
-def extract_cubes(volume, cube_size=32, min_foreground_percent=0.5, mask=None, max_cubes=None):
+def extract_cubes(volume, cube_size=32, min_foreground_percent=0.5, mask=None, max_cubes=32):
     """
-    Extract 32³ cubes from a high-resolution volume, discarding cubes with >50% background.
+    Extract cubes from a high-resolution volume, discarding cubes with insufficient foreground.
     
     Args:
         volume (torch.Tensor): Input volume of shape [Z, 1, H, W]
         cube_size (int): Size of the cubes to extract
         min_foreground_percent (float): Minimum percentage of foreground required (0.0-1.0)
         mask (torch.Tensor, optional): Binary mask to apply (1=foreground, 0=background)
-        max_cubes (int, optional): Maximum number of cubes to extract
+        max_cubes (int, optional): Maximum number of cubes to extract (default 32)
         
     Returns:
         list: List of extracted cubes as torch tensors, each of shape [1, cube_size, cube_size, cube_size]
     """
     z_dim, c_dim, h_dim, w_dim = volume.shape
+    print(f"Volume shape: {volume.shape}, cube_size: {cube_size}")
+    
+    # Validate dimensions
+    min_spatial_dim = min(h_dim, w_dim)  # Only consider H,W for initial sizing
+    if cube_size > min_spatial_dim:
+        print(f"Warning: cube_size ({cube_size}) is larger than smallest spatial dimension ({min_spatial_dim})")
+        # Adjust cube size to largest power of 2 that fits but is no larger than 1/2 the smallest dimension
+        new_size = 32  # Start with minimum size
+        target_max = min_spatial_dim // 2  # Don't use more than half the smallest dimension
+        while new_size * 2 <= target_max and new_size * 2 <= 64:  # Cap at 64 to avoid memory issues
+            new_size *= 2
+        print(f"Adjusting cube_size to {new_size}")
+        cube_size = new_size
     
     # Create a binary foreground mask if not provided
     if mask is None:
-        # Simple thresholding to determine foreground
-        foreground_threshold = 0.1  # Adjust based on your data
+        # Lower threshold for more lenient foreground detection
+        foreground_threshold = 0.05  # Reduced from 0.1
         mask = (volume > foreground_threshold).float()
+        print(f"Created mask with threshold {foreground_threshold}, foreground ratio: {mask.mean().item():.3f}")
     
-    # Calculate number of cubes that can fit in each dimension
+    # Calculate number of cubes that can fit in each dimension with 50% overlap
     z_steps = max(1, (z_dim - cube_size) // (cube_size // 2) + 1)
     h_steps = max(1, (h_dim - cube_size) // (cube_size // 2) + 1)
     w_steps = max(1, (w_dim - cube_size) // (cube_size // 2) + 1)
     
-    cubes = []
+    print(f"Steps: z={z_steps}, h={h_steps}, w={w_steps}")
+    print(f"Using cube_size={cube_size}, min_foreground={min_foreground_percent}")
     
-    # Iterate through all possible cube positions with 50% overlap
-    for z_idx in range(z_steps):
+    cubes = []
+    total_checked = 0
+    total_size_mismatch = 0
+    total_foreground_reject = 0
+    
+    # Calculate stride based on how many cubes we want
+    total_possible = z_steps * h_steps * w_steps
+    if max_cubes is not None and total_possible > max_cubes:
+        # Adjust stride to get closer to max_cubes
+        stride_factor = math.ceil(math.sqrt(total_possible / max_cubes))
+        z_stride = max(1, z_steps // stride_factor)
+        h_stride = max(1, h_steps // stride_factor)
+        w_stride = max(1, w_steps // stride_factor)
+        print(f"Adjusted strides to z={z_stride}, h={h_stride}, w={w_stride} to target {max_cubes} cubes")
+    else:
+        z_stride = h_stride = w_stride = 1
+    
+    # Iterate through all possible cube positions with adjusted stride
+    for z_idx in range(0, z_steps, z_stride):
         z_start = min(z_dim - cube_size, z_idx * (cube_size // 2))
         z_end = z_start + cube_size
         
-        for h_idx in range(h_steps):
+        for h_idx in range(0, h_steps, h_stride):
             h_start = min(h_dim - cube_size, h_idx * (cube_size // 2))
             h_end = h_start + cube_size
             
-            for w_idx in range(w_steps):
+            for w_idx in range(0, w_steps, w_stride):
                 w_start = min(w_dim - cube_size, w_idx * (cube_size // 2))
                 w_end = w_start + cube_size
+                
+                total_checked += 1
                 
                 # Extract the cube
                 cube = volume[z_start:z_end, :, h_start:h_end, w_start:w_end]
@@ -61,6 +95,9 @@ def extract_cubes(volume, cube_size=32, min_foreground_percent=0.5, mask=None, m
                 
                 # Skip if cube dimensions don't match (edge cases)
                 if cube.shape[0] != cube_size or cube.shape[2] != cube_size or cube.shape[3] != cube_size:
+                    if total_size_mismatch == 0:  # Print details for first mismatch only
+                        print(f"Size mismatch: got {cube.shape}, expected [{cube_size}, 1, {cube_size}, {cube_size}]")
+                    total_size_mismatch += 1
                     continue
                 
                 # Check if cube has sufficient foreground
@@ -69,10 +106,16 @@ def extract_cubes(volume, cube_size=32, min_foreground_percent=0.5, mask=None, m
                     # Reshape to [1, Z, H, W] format for 3D convolutions
                     cube = cube.permute(1, 0, 2, 3)
                     cubes.append(cube)
+                else:
+                    total_foreground_reject += 1
                     
-                    # Break if we've reached the maximum number of cubes
-                    if max_cubes is not None and len(cubes) >= max_cubes:
-                        return cubes
+                # Break if we've reached the maximum number of cubes
+                if max_cubes is not None and len(cubes) >= max_cubes:
+                    print(f"Reached max cubes ({max_cubes})")
+                    return cubes
+    
+    print(f"Extraction stats: checked={total_checked}, size_mismatch={total_size_mismatch}, "
+          f"foreground_reject={total_foreground_reject}, accepted={len(cubes)}")
     
     # Random shuffle the cubes
     random.shuffle(cubes)
@@ -170,9 +213,9 @@ class HighResTextureDataset(Dataset):
     def __init__(self, 
                  root_dir,
                  is_cytoplasm=False,
-                 cube_size=32,
+                 cube_size=32,  # Changed from 8 to match loader default
                  pairs_per_sample=32,
-                 min_foreground_percent=0.5,
+                 min_foreground_percent=0.1,  # Reduced from 0.5 to be more lenient
                  class_csv_path=None,
                  sample_ids=None,
                  filter_by_class=None,
@@ -182,7 +225,7 @@ class HighResTextureDataset(Dataset):
         Args:
             root_dir (str): Root directory containing the samples
             is_cytoplasm (bool): If True, use cytoplasm masks; if False, use nucleus masks
-            cube_size (int): Size of the cubes to extract
+            cube_size (int): Size of the cubes to extract (default 32³)
             pairs_per_sample (int): Number of contrastive pairs to create per sample
             min_foreground_percent (float): Minimum percentage of foreground required
             class_csv_path (str): Path to CSV file with class information
@@ -223,15 +266,24 @@ class HighResTextureDataset(Dataset):
         """Extract contrastive pairs from all samples in the dataset."""
         if self.debug:
             print(f"Extracting contrastive pairs from {len(self.dataset)} samples...")
+            print(f"Parameters: cube_size={self.cube_size}, min_foreground={self.min_foreground_percent}")
+        
+        total_samples = 0
+        total_cubes = 0
+        total_pairs = 0
         
         for idx in range(len(self.dataset)):
             sample = self.dataset[idx]
             volume = sample['image']  # [Z, 1, H, W]
             sample_id = sample['metadata']['sample_id']
             
+            if self.debug:
+                print(f"\nProcessing sample {sample_id} ({idx+1}/{len(self.dataset)})")
+                print(f"Volume shape: {volume.shape}")
+            
             # TODO: Add proper masking for nucleus/cytoplasm when available
             # For now, we'll use a threshold-based mask
-            mask = (volume > 0.1).float()
+            mask = (volume > 0.05).float()  # Lowered threshold from 0.1
             
             # Extract cubes from this sample
             cubes = extract_cubes(
@@ -244,12 +296,16 @@ class HighResTextureDataset(Dataset):
             if self.debug:
                 print(f"Sample {sample_id}: Extracted {len(cubes)} valid cubes")
             
+            total_samples += 1
+            total_cubes += len(cubes)
+            
             # Skip samples with no valid cubes
             if not cubes:
                 continue
             
             # Create contrastive pairs
             pairs = create_contrastive_pairs(cubes, num_pairs=self.pairs_per_sample)
+            total_pairs += len(pairs)
             
             # Store the pairs with their metadata
             for pair in pairs:
@@ -261,7 +317,12 @@ class HighResTextureDataset(Dataset):
                 })
         
         if self.debug:
-            print(f"Total contrastive pairs: {len(self.contrastive_pairs)}")
+            print(f"\nDataset statistics:")
+            print(f"Total samples processed: {total_samples}")
+            print(f"Total cubes extracted: {total_cubes}")
+            print(f"Total contrastive pairs: {total_pairs}")
+            print(f"Average cubes per sample: {total_cubes/total_samples:.1f}")
+            print(f"Average pairs per sample: {total_pairs/total_samples:.1f}")
     
     def __len__(self):
         return len(self.contrastive_pairs)
@@ -380,7 +441,7 @@ def get_morphofeatures_highres_texture_dataloader(
     shuffle=True,
     num_workers=0,  # Default to 0 to avoid multiprocessing issues
     is_cytoplasm=False,
-    cube_size=32,
+    cube_size=32,  # Default to 32 as in paper, override with smaller size if needed
     pairs_per_sample=32,
     min_foreground_percent=0.5,
     class_csv_path=None,
@@ -388,7 +449,8 @@ def get_morphofeatures_highres_texture_dataloader(
     filter_by_class=None,
     ignore_unclassified=True,
     pin_memory=False,
-    debug=False
+    debug=False,
+    box_size=None  # Add box_size parameter
 ):
     """
     Get a highres texture dataloader already adapted for MorphoFeatures texture model.
@@ -412,10 +474,21 @@ def get_morphofeatures_highres_texture_dataloader(
         ignore_unclassified (bool): Whether to ignore unclassified samples
         pin_memory (bool): Whether to pin memory for faster GPU transfer
         debug (bool): Whether to print debug information
+        box_size (list): Optional box size from config, used to determine appropriate cube size
         
     Returns:
         DataLoader: Adapted dataloader for MorphoFeatures high-resolution texture model
     """
+    # If box_size is provided, use a cube size that's a power of 2 and fits within the smallest dimension
+    if box_size is not None:
+        min_dim = min(box_size)  # Get smallest dimension
+        # Find largest power of 2 that's <= min_dim and >= 32
+        cube_size = 32  # Start with minimum size from paper
+        while cube_size * 2 <= min_dim and cube_size * 2 <= 128:  # Cap at 128 to avoid memory issues
+            cube_size *= 2
+        if debug:
+            print(f"Adjusted cube_size to {cube_size} based on box_size {box_size}")
+    
     # Create the contrastive dataset
     dataset = HighResTextureDataset(
         root_dir=root_dir,

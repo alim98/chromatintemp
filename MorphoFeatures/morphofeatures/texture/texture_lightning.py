@@ -130,21 +130,21 @@ class TextureNet(pl.LightningModule):
             # Log loss
             self.log("train_loss", loss, prog_bar=True)
         else:
-            # Compute contrastive loss between embeddings
+        # Compute contrastive loss between embeddings
             con_loss = self.criterion_con(z1, z2)  # Directly use z1 and z2 as positive pairs
-            
-            # Compute reconstruction losses
-            rec_loss1 = self.criterion_rec(rec1, target1)
-            rec_loss2 = self.criterion_rec(rec2, target2)
-            rec_loss = (rec_loss1 + rec_loss2) / 2
-            
-            # Compute combined loss
-            loss = con_loss + self.lambda_rec * rec_loss
-            
-            # Log losses
-            self.log("train_loss", loss, prog_bar=True)
-            self.log("train_con_loss", con_loss, prog_bar=False)
-            self.log("train_rec_loss", rec_loss, prog_bar=False)
+        
+        # Compute reconstruction losses
+        rec_loss1 = self.criterion_rec(rec1, target1)
+        rec_loss2 = self.criterion_rec(rec2, target2)
+        rec_loss = (rec_loss1 + rec_loss2) / 2
+        
+        # Compute combined loss
+        loss = con_loss + self.lambda_rec * rec_loss
+        
+        # Log losses
+        self.log("train_loss", loss, prog_bar=True)
+        self.log("train_con_loss", con_loss, prog_bar=False)
+        self.log("train_rec_loss", rec_loss, prog_bar=False)
         
         return loss
         
@@ -173,21 +173,21 @@ class TextureNet(pl.LightningModule):
             # Log loss
             self.log("val_loss", loss, prog_bar=True)
         else:
-            # Compute contrastive loss between embeddings
+        # Compute contrastive loss between embeddings
             con_loss = self.criterion_con(z1, z2)  # z1 and z2 are positive pairs
-            
-            # Compute reconstruction losses
-            rec_loss1 = self.criterion_rec(rec1, target1)
-            rec_loss2 = self.criterion_rec(rec2, target2)
-            rec_loss = (rec_loss1 + rec_loss2) / 2
-            
-            # Compute combined loss
-            loss = con_loss + self.lambda_rec * rec_loss
-            
-            # Log losses
-            self.log("val_loss", loss, prog_bar=True)
-            self.log("val_con_loss", con_loss, prog_bar=False)
-            self.log("val_rec_loss", rec_loss, prog_bar=False)
+        
+        # Compute reconstruction losses
+        rec_loss1 = self.criterion_rec(rec1, target1)
+        rec_loss2 = self.criterion_rec(rec2, target2)
+        rec_loss = (rec_loss1 + rec_loss2) / 2
+        
+        # Compute combined loss
+        loss = con_loss + self.lambda_rec * rec_loss
+        
+        # Log losses
+        self.log("val_loss", loss, prog_bar=True)
+        self.log("val_con_loss", con_loss, prog_bar=False)
+        self.log("val_rec_loss", rec_loss, prog_bar=False)
         
         return loss
 
